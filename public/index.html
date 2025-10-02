@@ -605,7 +605,6 @@
     <div id="alert" class="alert" style="max-width: 1400px; margin: 0 auto 20px;"></div>
 
     <div class="container">
-{{ ... }}
         <div class="main-content">
 
         <div class="dashboard">
@@ -715,45 +714,45 @@
             </div>
 
             <div class="card">
-                <h2>
+                <h2 onclick="toggleLastUpdateDetails()" style="cursor: pointer; user-select: none;">
                     <span class="card-icon">📊</span> Last Update Details
-                    <span class="tooltip">
-                        <span class="tooltip-icon">?</span>
-                        <span class="tooltip-text">Detailed metrics from the most recent update</span>
-                    </span>
+                    <span id="lastUpdateAccount" style="font-size: 0.8rem; color: #b3b3b3; font-weight: 400;"></span>
+                    <span id="lastUpdateToggle" style="font-size: 0.8rem; margin-left: auto;">▼</span>
                 </h2>
-                <div class="stat">
-                    <span class="stat-label">
-                        Exclude List Updated
-                        <span class="tooltip">
-                            <span class="tooltip-icon">?</span>
-                            <span class="tooltip-text">Updates the account-level split tunnel exclude list (applies to all profiles using exclude mode)</span>
+                <div id="lastUpdateContent">
+                    <div class="stat">
+                        <span class="stat-label">
+                            Exclude List Updated
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">Updates the account-level split tunnel exclude list (applies to all profiles using exclude mode)</span>
+                            </span>
                         </span>
-                    </span>
-                    <span class="stat-value" id="profilesUpdated">-</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">
-                        IPs Added
-                        <span class="tooltip">
-                            <span class="tooltip-icon">?</span>
-                            <span class="tooltip-text">Total Zoom IP ranges added to split tunnel exclude list</span>
+                        <span class="stat-value" id="profilesUpdated">-</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">
+                            IPs Added
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">Total Zoom IP ranges added to split tunnel exclude list</span>
+                            </span>
                         </span>
-                    </span>
-                    <span class="stat-value" id="ipsAdded">-</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">
-                        Processing Time
-                        <span class="tooltip">
-                            <span class="tooltip-icon">?</span>
-                            <span class="tooltip-text">Time taken to complete the update operation</span>
+                        <span class="stat-value" id="ipsAdded">-</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">
+                            Processing Time
+                            <span class="tooltip">
+                                <span class="tooltip-icon">?</span>
+                                <span class="tooltip-text">Time taken to complete the update operation</span>
+                            </span>
                         </span>
-                    </span>
-                    <span class="stat-value" id="processingTime">-</span>
-                </div>
-                <div id="updatedProfilesList" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #282828; display: none;">
-                    <div id="profilesListContent" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"></div>
+                        <span class="stat-value" id="processingTime">-</span>
+                    </div>
+                    <div id="updatedProfilesList" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #282828; display: none;">
+                        <div id="profilesListContent" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -843,6 +842,20 @@
             document.getElementById('initTime').textContent = formatLocalTime(new Date());
             refreshStatus();
         });
+
+        // Toggle Last Update Details
+        function toggleLastUpdateDetails() {
+            const content = document.getElementById('lastUpdateContent');
+            const toggle = document.getElementById('lastUpdateToggle');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
 
         // Format time in local timezone with AM/PM and timezone abbreviation
         function formatLocalTime(date) {
@@ -958,8 +971,12 @@
                     }
                     
                     // Update account info
-                    document.getElementById('accountName').textContent = 
-                        status.selected_account_name || 'Not selected';
+                    const accountName = status.selected_account_name || 'Not selected';
+                    document.getElementById('accountName').textContent = accountName;
+                    
+                    // Update Last Update Details header with account name
+                    document.getElementById('lastUpdateAccount').textContent = 
+                        accountName !== 'Not selected' ? `(${accountName})` : '';
                     
                     document.getElementById('profileCount').textContent = status.warp_profiles_count || '0';
                     document.getElementById('accountCount').textContent = status.accounts_available || '0';
@@ -1068,19 +1085,17 @@
                         // Show exclude mode profiles
                         if (excludeProfiles.length > 0) {
                             html += `<div style="margin-bottom: 15px;">`;
-                            html += `<div style="font-weight: 700; color: #1DB954; margin-bottom: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                            html += `<div style="font-weight: 700; color: #1DB954; margin-bottom: 8px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
                                 <span>✓</span> Exclude Mode (${excludeProfiles.length})
-                                <span class="tooltip" style="display: inline-flex;">
-                                    <span class="tooltip-icon" style="font-size: 0.8rem;">?</span>
-                                    <span class="tooltip-text">These profiles bypass the tunnel for Zoom IPs</span>
-                                </span>
+                            </div>`;
+                            html += `<div style="color: #b3b3b3; font-size: 0.85rem; margin-bottom: 10px; font-style: italic;">
+                                Zoom IPs bypass the tunnel for these profiles
                             </div>`;
                             
                             excludeProfiles.forEach(profile => {
                                 html += `
-                                    <div style="padding: 10px; margin-bottom: 6px; background: #1a3a1a; border-left: 3px solid #1DB954; border-radius: 4px;">
+                                    <div style="padding: 8px 12px; margin-bottom: 4px; background: #1a3a1a; border-left: 3px solid #1DB954; border-radius: 4px;">
                                         <div style="font-weight: 600; color: #ffffff; font-size: 0.9rem;">${profile.profile_name || 'Unknown'}</div>
-                                        <div style="color: #b3b3b3; font-size: 0.8rem; margin-top: 4px;">${profile.reason || 'Updated with Zoom IPs'}</div>
                                     </div>
                                 `;
                             });
@@ -1090,19 +1105,17 @@
                         // Show include mode profiles
                         if (includeProfiles.length > 0) {
                             html += `<div>`;
-                            html += `<div style="font-weight: 700; color: #ffa500; margin-bottom: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                            html += `<div style="font-weight: 700; color: #ffa500; margin-bottom: 8px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
                                 <span>✗</span> Include Mode (${includeProfiles.length})
-                                <span class="tooltip" style="display: inline-flex;">
-                                    <span class="tooltip-icon" style="font-size: 0.8rem;">?</span>
-                                    <span class="tooltip-text">These profiles cannot be updated (include mode only allows specific IPs through tunnel)</span>
-                                </span>
+                            </div>`;
+                            html += `<div style="color: #b3b3b3; font-size: 0.85rem; margin-bottom: 10px; font-style: italic;">
+                                Cannot be updated - Include mode only allows specific IPs through tunnel
                             </div>`;
                             
                             includeProfiles.forEach(profile => {
                                 html += `
-                                    <div style="padding: 10px; margin-bottom: 6px; background: #3a2a1a; border-left: 3px solid #ffa500; border-radius: 4px;">
+                                    <div style="padding: 8px 12px; margin-bottom: 4px; background: #3a2a1a; border-left: 3px solid #ffa500; border-radius: 4px;">
                                         <div style="font-weight: 600; color: #ffffff; font-size: 0.9rem;">${profile.profile_name || 'Unknown'}</div>
-                                        <div style="color: #b3b3b3; font-size: 0.8rem; margin-top: 4px;">${profile.reason || 'Cannot update include mode'}</div>
                                     </div>
                                 `;
                             });
