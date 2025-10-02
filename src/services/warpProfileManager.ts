@@ -15,7 +15,10 @@ export class WARPProfileManager {
 
 	constructor(env: Env) {
 		this.env = env;
-		this.cloudflareAPI = new CloudflareAPIService(env.CLOUDFLARE_API_TOKEN);
+		this.cloudflareAPI = new CloudflareAPIService(
+			env.CLOUDFLARE_API_TOKEN,
+			env.CLOUDFLARE_ACCOUNTS_TOKEN // Pass separate accounts token if available
+		);
 		this.zoomFetcher = new ZoomIPFetcher(
 			env.ZOOM_IP_SOURCE_URL,
 			parseInt(env.MAX_RETRIES) || 3

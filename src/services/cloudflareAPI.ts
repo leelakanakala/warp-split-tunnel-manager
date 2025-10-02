@@ -13,40 +13,71 @@ import {
  */
 export class CloudflareAPIService {
 	private apiToken: string;
+	private accountsToken: string;
 	private baseURL = 'https://api.cloudflare.com/client/v4';
 
-	constructor(apiToken: string) {
+	constructor(apiToken: string, accountsToken?: string) {
 		this.apiToken = apiToken;
+		this.accountsToken = accountsToken || apiToken; // Use separate token if provided, otherwise use main token
 	}
 
 	/**
 	 * Fetch all accounts accessible with the API token
 	 */
 	async fetchAccounts(): Promise<CloudflareAccount[]> {
-		console.log('Fetching Cloudflare accounts...');
+		console.log('[API] Fetching Cloudflare accounts...');
 		
-		const response = await fetch(`${this.baseURL}/accounts?per_page=50`, {
-			method: 'GET',
-			headers: {
-				'Authorization': `Bearer ${this.apiToken}`,
-				'Content-Type': 'application/json',
-			},
-		});
+		let allAccounts: CloudflareAccount[] = [];
+		let page = 1;
+		let hasMore = true;
+		
+		while (hasMore) {
+			const url = `${this.baseURL}/accounts?per_page=50&page=${page}`;
+			console.log(`[API] GET ${url}`);
+			console.log(`[API] Using accounts token: ${this.accountsToken.substring(0, 10)}...`);
+			
+			const response = await fetch(url, {
+				method: 'GET',
+				headers: {
+					'Authorization': `Bearer ${this.accountsToken}`,
+					'Content-Type': 'application/json',
+				},
+			});
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			throw new Error(`Failed to fetch accounts: ${response.status} ${errorText}`);
+			console.log(`[API] Response: ${response.status} ${response.statusText}`);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error(`[API] Error: ${errorText}`);
+				throw new Error(`Failed to fetch accounts: ${response.status} ${errorText}`);
+			}
+
+			const data: CloudflareAccountsResponse = await response.json();
+
+			if (!data.success) {
+				const errors = data.errors.map((e: CloudflareError) => e.message).join(', ');
+				console.error(`[API] Cloudflare API error: ${errors}`);
+				throw new Error(`Cloudflare API error: ${errors}`);
+			}
+
+			console.log(`[API] Page ${page}: Found ${data.result.length} accounts`);
+			console.log(`[API] Result info:`, JSON.stringify(data.result_info));
+			
+			allAccounts = allAccounts.concat(data.result);
+			
+			// Check if there are more pages
+			if (data.result_info && data.result_info.total_count > allAccounts.length) {
+				console.log(`[API] More pages available. Total: ${data.result_info.total_count}, Fetched: ${allAccounts.length}`);
+				page++;
+			} else {
+				console.log(`[API] No more pages. Total fetched: ${allAccounts.length}`);
+				hasMore = false;
+			}
 		}
 
-		const data: CloudflareAccountsResponse = await response.json();
-
-		if (!data.success) {
-			const errors = data.errors.map((e: CloudflareError) => e.message).join(', ');
-			throw new Error(`Cloudflare API error: ${errors}`);
-		}
-
-		console.log(`Found ${data.result.length} accounts`);
-		return data.result;
+		console.log(`[API] Found ${allAccounts.length} total accounts`);
+		console.log(`[API] Account names:`, allAccounts.map(a => a.name).join(', '));
+		return allAccounts;
 	}
 
 	/**

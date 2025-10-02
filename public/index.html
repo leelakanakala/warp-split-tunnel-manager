@@ -736,15 +736,8 @@
                     </span>
                     <span class="stat-value" id="processingTime">-</span>
                 </div>
-                <div id="updatedProfilesList" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f0f0f0; display: none;">
-                    <div style="font-weight: 600; color: #667eea; margin-bottom: 10px; font-size: 0.9rem;">
-                        ✓ Profiles Using Exclude Mode:
-                        <span class="tooltip" style="display: inline-flex;">
-                            <span class="tooltip-icon" style="margin-left: 4px;">?</span>
-                            <span class="tooltip-text" style="white-space: normal; max-width: 200px;">These profiles automatically inherit the Zoom IPs from the account-level exclude list</span>
-                        </span>
-                    </div>
-                    <div id="profilesListContent" style="max-height: 150px; overflow-y: auto; font-size: 0.85rem;"></div>
+                <div id="updatedProfilesList" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #282828; display: none;">
+                    <div id="profilesListContent" style="max-height: 200px; overflow-y: auto; font-size: 0.85rem;"></div>
                 </div>
             </div>
         </div>
@@ -958,21 +951,43 @@
                     const profilesContent = document.getElementById('profilesListContent');
 
                     if (lastUpdate.updated_profiles && lastUpdate.updated_profiles.length > 0) {
-                        // Filter to show only successfully updated profiles
+                        // Separate profiles by mode
                         const updatedProfiles = lastUpdate.updated_profiles.filter(p => p.success);
+                        const skippedProfiles = lastUpdate.updated_profiles.filter(p => !p.success);
                         
+                        let html = '';
+                        
+                        // Show updated profiles (exclude mode)
                         if (updatedProfiles.length > 0) {
-                            const html = updatedProfiles.map(profile => {
+                            html += `<div style="font-weight: 600; color: #1DB954; margin-bottom: 10px; font-size: 0.9rem;">✓ Profiles Using Exclude Mode (${updatedProfiles.length}):</div>`;
+                            html += updatedProfiles.map(profile => {
                                 const profileName = profile.profile_name || 'Unknown Profile';
                                 const reason = profile.reason || 'Updated successfully';
                                 return `
-                                    <div style="padding: 6px 8px; margin-bottom: 4px; background: #f0fff4; border-left: 3px solid #56ab2f; border-radius: 4px;">
-                                        <div style="font-weight: 500; color: #333;">✓ ${profileName}</div>
-                                        <div style="color: #666; font-size: 0.8rem; margin-top: 2px; font-style: italic;">${reason}</div>
+                                    <div style="padding: 6px 8px; margin-bottom: 4px; background: #1a3a1a; border-left: 3px solid #1DB954; border-radius: 4px;">
+                                        <div style="font-weight: 500; color: #ffffff;">✓ ${profileName}</div>
+                                        <div style="color: #b3b3b3; font-size: 0.8rem; margin-top: 2px; font-style: italic;">${reason}</div>
                                     </div>
                                 `;
                             }).join('');
-                            
+                        }
+                        
+                        // Show skipped profiles (include mode)
+                        if (skippedProfiles.length > 0) {
+                            html += `<div style="font-weight: 600; color: #ffa500; margin-top: 15px; margin-bottom: 10px; font-size: 0.9rem;">✗ Profiles Using Include Mode (${skippedProfiles.length}):</div>`;
+                            html += skippedProfiles.map(profile => {
+                                const profileName = profile.profile_name || 'Unknown Profile';
+                                const reason = profile.reason || 'Cannot update';
+                                return `
+                                    <div style="padding: 6px 8px; margin-bottom: 4px; background: #3a2a1a; border-left: 3px solid #ffa500; border-radius: 4px;">
+                                        <div style="font-weight: 500; color: #ffffff;">✗ ${profileName}</div>
+                                        <div style="color: #b3b3b3; font-size: 0.8rem; margin-top: 2px; font-style: italic;">${reason}</div>
+                                    </div>
+                                `;
+                            }).join('');
+                        }
+                        
+                        if (html) {
                             profilesContent.innerHTML = html;
                             profilesList.style.display = 'block';
                         } else {
