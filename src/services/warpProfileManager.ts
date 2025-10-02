@@ -15,10 +15,7 @@ export class WARPProfileManager {
 
 	constructor(env: Env) {
 		this.env = env;
-		this.cloudflareAPI = new CloudflareAPIService(
-			env.CLOUDFLARE_API_TOKEN,
-			env.CLOUDFLARE_ACCOUNTS_TOKEN // Pass separate accounts token if available
-		);
+		this.cloudflareAPI = new CloudflareAPIService(env.CLOUDFLARE_API_TOKEN);
 		this.zoomFetcher = new ZoomIPFetcher(
 			env.ZOOM_IP_SOURCE_URL,
 			parseInt(env.MAX_RETRIES) || 3
@@ -221,10 +218,13 @@ export class WARPProfileManager {
 		// Get accounts count
 		let accountsCount = 0;
 		try {
+			console.log('[STATUS] Fetching accounts...');
 			const accounts = await this.getAccounts();
 			accountsCount = accounts.length;
+			console.log(`[STATUS] Found ${accountsCount} accounts`);
 		} catch (error) {
-			console.error('Failed to fetch accounts count:', error);
+			console.error('[STATUS] Failed to fetch accounts count:', error);
+			console.error('[STATUS] Error details:', error instanceof Error ? error.message : String(error));
 		}
 
 		// Calculate next scheduled update (based on cron: daily at 3 AM UTC)

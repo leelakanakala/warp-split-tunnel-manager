@@ -10,7 +10,6 @@ export interface Env {
 	
 	// Secrets
 	CLOUDFLARE_API_TOKEN: string;
-	CLOUDFLARE_ACCOUNTS_TOKEN?: string; // Optional separate token for listing accounts
 	SELECTED_ACCOUNT_ID?: string;
 	
 	// Environment variables

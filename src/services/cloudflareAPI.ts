@@ -13,12 +13,10 @@ import {
  */
 export class CloudflareAPIService {
 	private apiToken: string;
-	private accountsToken: string;
 	private baseURL = 'https://api.cloudflare.com/client/v4';
 
-	constructor(apiToken: string, accountsToken?: string) {
+	constructor(apiToken: string) {
 		this.apiToken = apiToken;
-		this.accountsToken = accountsToken || apiToken; // Use separate token if provided, otherwise use main token
 	}
 
 	/**
@@ -34,12 +32,11 @@ export class CloudflareAPIService {
 		while (hasMore) {
 			const url = `${this.baseURL}/accounts?per_page=50&page=${page}`;
 			console.log(`[API] GET ${url}`);
-			console.log(`[API] Using accounts token: ${this.accountsToken.substring(0, 10)}...`);
 			
 			const response = await fetch(url, {
 				method: 'GET',
 				headers: {
-					'Authorization': `Bearer ${this.accountsToken}`,
+					'Authorization': `Bearer ${this.apiToken}`,
 					'Content-Type': 'application/json',
 				},
 			});
