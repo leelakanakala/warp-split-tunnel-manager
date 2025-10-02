@@ -570,7 +570,7 @@
         <div class="dashboard">
             <div class="card">
                 <h2>
-                    <span class="card-icon">📊</span> System Status
+                    <span class="card-icon">⚡</span> System Status
                     <span class="tooltip">
                         <span class="tooltip-icon">?</span>
                         <span class="tooltip-text">Overall system health and update status</span>
@@ -620,7 +620,7 @@
 
             <div class="card">
                 <h2>
-                    <span class="card-icon">🏢</span> Account Info
+                    <span class="card-icon">🔐</span> Account Info
                     <span class="tooltip">
                         <span class="tooltip-icon">?</span>
                         <span class="tooltip-text">Cloudflare account and WARP profile information</span>
@@ -660,7 +660,7 @@
 
             <div class="card">
                 <h2>
-                    <span class="card-icon">📈</span> Last Update Details
+                    <span class="card-icon">📊</span> Last Update Details
                     <span class="tooltip">
                         <span class="tooltip-icon">?</span>
                         <span class="tooltip-text">Detailed metrics from the most recent update</span>
@@ -698,7 +698,7 @@
                 </div>
                 <div id="updatedProfilesList" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f0f0f0; display: none;">
                     <div style="font-weight: 600; color: #667eea; margin-bottom: 10px; font-size: 0.9rem;">
-                        Profiles Using Exclude Mode:
+                        ✓ Profiles Using Exclude Mode:
                         <span class="tooltip" style="display: inline-flex;">
                             <span class="tooltip-icon" style="margin-left: 4px;">?</span>
                             <span class="tooltip-text" style="white-space: normal; max-width: 200px;">These profiles automatically inherit the Zoom IPs from the account-level exclude list</span>
@@ -966,12 +966,45 @@
 
                 const data = await response.json();
 
-                if (data.success && data.data.success) {
+                if (data.success && data.data) {
                     const result = data.data;
                     
-                    addLog(`Fetched ${result.ips_added} Zoom IP ranges`, 'success');
-                    addLog(`Updated ${result.profiles_updated} profile(s)`, 'success');
-                    addLog(`Processing time: ${(result.processing_time_ms / 1000).toFixed(2)}s`, 'info');
+                    // Log summary
+                    addLog(`📊 Update Summary:`, 'info');
+                    addLog(`  • Total profiles processed: ${result.updated_profiles?.length || 0}`, 'info');
+                    addLog(`  • Successfully updated: ${result.profiles_updated || 0}`, 'success');
+                    addLog(`  • Failed/Skipped: ${result.profiles_failed || 0}`, result.profiles_failed > 0 ? 'warning' : 'info');
+                    addLog(`  • Zoom IPs added: ${result.ips_added}`, 'success');
+                    addLog(`  • Processing time: ${(result.processing_time_ms / 1000).toFixed(2)}s`, 'info');
+                    
+                    // Log each profile result
+                    if (result.updated_profiles && result.updated_profiles.length > 0) {
+                        addLog(`\n📋 Profile Details:`, 'info');
+                        result.updated_profiles.forEach(profile => {
+                            if (profile.success) {
+                                addLog(`  ✓ ${profile.profile_name}: Updated successfully`, 'success');
+                                if (profile.reason) {
+                                    addLog(`    → ${profile.reason}`, 'info');
+                                }
+                            } else {
+                                addLog(`  ✗ ${profile.profile_name}: Skipped`, 'warning');
+                                if (profile.reason) {
+                                    addLog(`    → ${profile.reason}`, 'warning');
+                                }
+                                if (profile.error) {
+                                    addLog(`    → Error: ${profile.error}`, 'error');
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Log errors if any
+                    if (result.errors && result.errors.length > 0) {
+                        addLog(`\n⚠️ Errors encountered:`, 'error');
+                        result.errors.forEach(err => {
+                            addLog(`  • ${err}`, 'error');
+                        });
+                    }
                     
                     // Update dashboard
                     document.getElementById('profilesUpdated').textContent = result.profiles_updated || '0';
@@ -982,19 +1015,27 @@
                     // Show detailed results modal
                     showUpdateResults(result);
                     
-                    showAlert(
-                        `✓ Update completed! ${result.profiles_updated} profile(s) updated with ${result.ips_added} Zoom IPs.`,
-                        'success'
-                    );
+                    // Show appropriate alert
+                    if (result.success) {
+                        showAlert(
+                            `✓ Update completed! ${result.profiles_updated} profile(s) updated with ${result.ips_added} Zoom IPs.`,
+                            'success'
+                        );
+                    } else {
+                        showAlert(
+                            `⚠️ Update completed with issues: ${result.profiles_updated} updated, ${result.profiles_failed} failed/skipped.`,
+                            'info'
+                        );
+                    }
                     
                     // Refresh status and profiles list
                     setTimeout(async () => {
                         await refreshStatus();
                     }, 1000);
                 } else {
-                    const errors = data.data?.errors || [data.error?.message || 'Unknown error'];
-                    addLog('Update failed: ' + errors.join(', '), 'error');
-                    showAlert('Update failed: ' + errors.join(', '), 'error');
+                    const errorMsg = data.error?.message || data.data?.errors?.join(', ') || 'Unknown error occurred';
+                    addLog(`❌ Update failed: ${errorMsg}`, 'error');
+                    showAlert(`Update failed: ${errorMsg}`, 'error');
                 }
             } catch (error) {
                 addLog('Error triggering update: ' + error.message, 'error');
@@ -1021,7 +1062,7 @@
                     </div>
                 </div>
                 <div style="margin-bottom: 20px; background: #e7f3ff; padding: 15px; border-radius: 8px; border-left: 4px solid #2193b0;">
-                    <h4 style="color: #0c5460; margin-bottom: 10px;">ℹ️ How It Works</h4>
+                    <h4 style="color: #0c5460; margin-bottom: 10px;">💡 How It Works</h4>
                     <p style="color: #0c5460; margin: 0; font-size: 0.9rem;">
                         This system updates the <strong>account-level split tunnel exclude list</strong>. 
                         This list is automatically applied to all WARP profiles that use <strong>exclude mode</strong>. 
@@ -1033,7 +1074,7 @@
             if (result.updated_profiles && result.updated_profiles.length > 0) {
                 html += `
                     <div>
-                        <h4 style="color: #667eea; margin-bottom: 10px;">Profiles Affected (${result.updated_profiles.length} total)</h4>
+                        <h4 style="color: #667eea; margin-bottom: 10px;">📋 Profiles Affected (${result.updated_profiles.length} total)</h4>
                         <div style="max-height: 300px; overflow-y: auto;">
                 `;
 
@@ -1056,7 +1097,7 @@
             if (result.errors && result.errors.length > 0) {
                 html += `
                     <div style="margin-top: 20px;">
-                        <h4 style="color: #eb3349; margin-bottom: 10px;">Errors</h4>
+                        <h4 style="color: #eb3349; margin-bottom: 10px;">⚠️ Errors</h4>
                         <div style="background: #fff5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #eb3349;">
                             ${result.errors.map(err => `<p style="margin: 5px 0;">• ${err}</p>`).join('')}
                         </div>
