@@ -67,7 +67,7 @@ export class WARPProfileManager {
 	}
 
 	/**
-	 * Perform a full update: fetch Zoom IPs and update all WARP profiles
+	 * Perform a full update: fetch Zoom IPs and update WARP profiles (only if IPs changed, unless forced)
 	 */
 	async performUpdate(accountId?: string, forceFetch: boolean = false): Promise<UpdateResult> {
 		const startTime = Date.now();
@@ -145,8 +145,8 @@ export class WARPProfileManager {
 				await this.storage.storeZoomIPs(zoomIPData);
 			}
 
-			// Update account-level split tunnel exclude list with Zoom IPs
-			console.log(`Updating split tunnel exclude list for account ${targetAccountName}...`);
+			// Update WARP profiles with Zoom IPs in their split tunnel exclude lists
+			console.log(`Updating WARP profile split tunnel exclude lists for account ${targetAccountName}...`);
 			const updateResults = await this.cloudflareAPI.updateAccountWithZoomIPs(
 				targetAccountId,
 				zoomIPData.ips

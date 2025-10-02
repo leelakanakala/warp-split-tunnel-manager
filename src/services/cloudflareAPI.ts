@@ -130,7 +130,7 @@ export class CloudflareAPIService {
 			description: entry.description || 'Zoom IP Range',
 		}));
 
-		// Update the account-level exclude list
+		// Update each WARP profile's exclude list
 		const url = `${this.baseURL}/accounts/${accountId}/devices/policy/exclude`;
 		
 		const response = await fetch(url, {
