@@ -118,7 +118,7 @@ export class WARPProfileManager {
 
 			// Prepare result
 			const result: UpdateResult = {
-				success: updateResults.success,
+				success: updateResults.updated > 0, // Success if at least one profile was updated
 				account_id: targetAccountId,
 				account_name: targetAccountName,
 				profiles_updated: updateResults.updated,
@@ -128,14 +128,14 @@ export class WARPProfileManager {
 				processing_time_ms: Date.now() - startTime,
 				timestamp: new Date().toISOString(),
 				errors: updateResults.results
-					.filter(r => !r.success)
-					.map(r => `${r.profileName}: ${r.error}`),
+					.filter(r => !r.success && r.error)
+					.map(r => `${r.profileName || 'Unknown'}: ${r.error || 'Unknown error'}`),
 				updated_profiles: updateResults.results.map((r: any) => ({
-					profile_id: r.profileId,
-					profile_name: r.profileName,
+					profile_id: r.profileId || 'default',
+					profile_name: r.profileName || 'Unknown Profile',
 					success: r.success,
-					error: r.error,
-					reason: r.reason
+					error: r.error || undefined,
+					reason: r.reason || undefined
 				})),
 			};
 

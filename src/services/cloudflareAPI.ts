@@ -331,25 +331,13 @@ export class CloudflareAPIService {
 			// Process each profile
 			for (const profile of profiles) {
 				const policyId = profile.policy_id || profile.id;
-				const profileName = profile.name;
-				const isDefault = profile.is_default || false;
-
-				// Default profile doesn't have a policy_id
-				if (!policyId && !isDefault) {
-					console.log(`[FLOW] Skipping profile "${profileName}" - no policy ID found and not default profile`);
-					results.push({
-						profileId: '',
-						profileName,
-						success: false,
-						reason: 'No policy ID found',
-					});
-					failed++;
-					continue;
-				}
+				const profileName = profile.name || 'Default';
+				// If no policy_id, treat it as the default profile
+				const isDefault = !policyId || profile.is_default || false;
 
 				try {
 					if (isDefault) {
-						console.log(`[FLOW] Step 2: Fetching details for DEFAULT profile "${profileName}"...`);
+						console.log(`[FLOW] Step 2: Fetching details for DEFAULT profile...`);
 					} else {
 						console.log(`[FLOW] Step 2: Fetching details for profile "${profileName}" (${policyId})...`);
 					}
@@ -362,11 +350,14 @@ export class CloudflareAPIService {
 
 					console.log(`[FLOW] Profile "${profileName}" (${isDefault ? 'DEFAULT' : policyId}) - hasInclude: ${hasInclude}, hasExclude: ${hasExclude}`);
 
+					// Format profile name - just "Default" for default profile, otherwise use profile name
+					const displayName = isDefault ? 'Default' : profileName;
+
 					if (hasInclude) {
 						console.log(`[FLOW] Skipping profile "${profileName}" - uses include mode`);
 						results.push({
 							profileId: policyId || 'default',
-							profileName,
+							profileName: displayName,
 							success: false,
 							reason: 'Profile uses include mode - Cannot add Zoom IPs (include mode specifies which IPs go through tunnel, not which bypass it)',
 						});
@@ -378,7 +369,7 @@ export class CloudflareAPIService {
 						
 						results.push({
 							profileId: policyId || 'default',
-							profileName: isDefault ? `${profileName} (Default)` : profileName,
+							profileName: displayName,
 							success: true,
 							reason: 'Profile uses exclude mode - Zoom IPs added to split tunnel exclude list',
 						});
@@ -393,9 +384,12 @@ export class CloudflareAPIService {
 					const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 					console.error(`[FLOW] ✗ Failed to update profile "${profileName}":`, errorMessage);
 					
+					// Format profile name with Default label if needed
+					const displayName = isDefault ? `${profileName} (Default)` : profileName;
+					
 					results.push({
 						profileId: policyId || 'default',
-						profileName,
+						profileName: displayName,
 						success: false,
 						error: errorMessage,
 					});
