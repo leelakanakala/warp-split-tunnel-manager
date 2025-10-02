@@ -701,6 +701,21 @@
 
             <div class="card">
                 <h2>
+                    <span class="card-icon">📋</span> WARP Profiles
+                    <span class="tooltip">
+                        <span class="tooltip-icon">?</span>
+                        <span class="tooltip-text">All WARP profiles in the selected account</span>
+                    </span>
+                </h2>
+                <div id="allProfilesList" style="max-height: 300px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 20px; color: #b3b3b3;">
+                        Loading profiles...
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>
                     <span class="card-icon">📊</span> Last Update Details
                     <span class="tooltip">
                         <span class="tooltip-icon">?</span>
@@ -951,6 +966,7 @@
 
                     // Fetch and display last update profile list
                     await updateProfilesList();
+                    await loadAllProfiles();
 
                     addLog('Status refreshed successfully', 'success');
                     showAlert('Status refreshed successfully', 'success');
@@ -1027,6 +1043,82 @@
             } catch (error) {
                 console.error('Error fetching profiles list:', error);
                 document.getElementById('updatedProfilesList').style.display = 'none';
+            }
+        }
+
+        // Load and display all profiles
+        async function loadAllProfiles() {
+            const profilesList = document.getElementById('allProfilesList');
+            
+            try {
+                // Get the last update to see profile details
+                const response = await fetch(`${API_BASE}/history?limit=1`);
+                const data = await response.json();
+
+                if (data.success && data.data.history && data.data.history.length > 0) {
+                    const lastUpdate = data.data.history[0];
+                    
+                    if (lastUpdate.updated_profiles && lastUpdate.updated_profiles.length > 0) {
+                        const profiles = lastUpdate.updated_profiles;
+                        const excludeProfiles = profiles.filter(p => p.success);
+                        const includeProfiles = profiles.filter(p => !p.success);
+                        
+                        let html = '';
+                        
+                        // Show exclude mode profiles
+                        if (excludeProfiles.length > 0) {
+                            html += `<div style="margin-bottom: 15px;">`;
+                            html += `<div style="font-weight: 700; color: #1DB954; margin-bottom: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                <span>✓</span> Exclude Mode (${excludeProfiles.length})
+                                <span class="tooltip" style="display: inline-flex;">
+                                    <span class="tooltip-icon" style="font-size: 0.8rem;">?</span>
+                                    <span class="tooltip-text">These profiles bypass the tunnel for Zoom IPs</span>
+                                </span>
+                            </div>`;
+                            
+                            excludeProfiles.forEach(profile => {
+                                html += `
+                                    <div style="padding: 10px; margin-bottom: 6px; background: #1a3a1a; border-left: 3px solid #1DB954; border-radius: 4px;">
+                                        <div style="font-weight: 600; color: #ffffff; font-size: 0.9rem;">${profile.profile_name || 'Unknown'}</div>
+                                        <div style="color: #b3b3b3; font-size: 0.8rem; margin-top: 4px;">${profile.reason || 'Updated with Zoom IPs'}</div>
+                                    </div>
+                                `;
+                            });
+                            html += `</div>`;
+                        }
+                        
+                        // Show include mode profiles
+                        if (includeProfiles.length > 0) {
+                            html += `<div>`;
+                            html += `<div style="font-weight: 700; color: #ffa500; margin-bottom: 10px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                <span>✗</span> Include Mode (${includeProfiles.length})
+                                <span class="tooltip" style="display: inline-flex;">
+                                    <span class="tooltip-icon" style="font-size: 0.8rem;">?</span>
+                                    <span class="tooltip-text">These profiles cannot be updated (include mode only allows specific IPs through tunnel)</span>
+                                </span>
+                            </div>`;
+                            
+                            includeProfiles.forEach(profile => {
+                                html += `
+                                    <div style="padding: 10px; margin-bottom: 6px; background: #3a2a1a; border-left: 3px solid #ffa500; border-radius: 4px;">
+                                        <div style="font-weight: 600; color: #ffffff; font-size: 0.9rem;">${profile.profile_name || 'Unknown'}</div>
+                                        <div style="color: #b3b3b3; font-size: 0.8rem; margin-top: 4px;">${profile.reason || 'Cannot update include mode'}</div>
+                                    </div>
+                                `;
+                            });
+                            html += `</div>`;
+                        }
+                        
+                        profilesList.innerHTML = html;
+                    } else {
+                        profilesList.innerHTML = '<div style="text-align: center; padding: 20px; color: #b3b3b3;">No profiles found. Run an update first.</div>';
+                    }
+                } else {
+                    profilesList.innerHTML = '<div style="text-align: center; padding: 20px; color: #b3b3b3;">No profile data available</div>';
+                }
+            } catch (error) {
+                console.error('Error loading profiles:', error);
+                profilesList.innerHTML = '<div style="text-align: center; padding: 20px; color: #e22134;">Error loading profiles</div>';
             }
         }
 
