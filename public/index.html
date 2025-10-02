@@ -20,8 +20,100 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
+            display: flex;
+            gap: 20px;
+        }
+
+        .main-content {
+            flex: 1;
+        }
+
+        .log-panel {
+            width: 350px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-height: calc(100vh - 200px);
+            position: sticky;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-panel.collapsed {
+            width: 50px;
+            padding: 10px;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .log-header h3 {
+            color: #667eea;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .log-toggle {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #667eea;
+            padding: 5px;
+        }
+
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            border-left: 3px solid #667eea;
+        }
+
+        .log-entry.info {
+            border-left-color: #2193b0;
+        }
+
+        .log-entry.success {
+            border-left-color: #56ab2f;
+            background: #f0fff4;
+        }
+
+        .log-entry.error {
+            border-left-color: #eb3349;
+            background: #fff5f5;
+        }
+
+        .log-entry.warning {
+            border-left-color: #f2994a;
+            background: #fff8f0;
+        }
+
+        .log-time {
+            color: #666;
+            font-size: 0.75rem;
+            margin-bottom: 3px;
+        }
+
+        .log-message {
+            color: #333;
         }
 
         .header {
@@ -448,17 +540,30 @@
                 max-width: 200px;
                 font-size: 0.75rem;
             }
+
+            .container {
+                flex-direction: column;
+            }
+
+            .log-panel {
+                width: 100%;
+                position: relative;
+                top: 0;
+                max-height: 300px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Zoom WARP Manager</h1>
-            <p>Automatically update Cloudflare Zero Trust WARP profiles with Zoom IP ranges</p>
-        </div>
+    <div class="header" style="text-align: center; color: white; margin-bottom: 40px;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">🚀 Zoom WARP Manager</h1>
+        <p style="font-size: 1.1rem; opacity: 0.9;">Automatically update Cloudflare Zero Trust WARP profiles with Zoom IP ranges</p>
+    </div>
 
-        <div id="alert" class="alert"></div>
+    <div id="alert" class="alert" style="max-width: 1400px; margin: 0 auto 20px;"></div>
+
+    <div class="container">
+        <div class="main-content">
 
         <div class="dashboard">
             <div class="card">
@@ -614,6 +719,21 @@
                 <span class="tooltip-text" style="bottom: 110%;">Reload current system status and statistics</span>
             </button>
         </div>
+        </div>
+
+        <!-- Live Log Panel -->
+        <div class="log-panel" id="logPanel">
+            <div class="log-header">
+                <h3 id="logTitle">📋 Live Logs</h3>
+                <button class="log-toggle" onclick="toggleLogPanel()" title="Toggle log panel">◀</button>
+            </div>
+            <div class="log-content" id="logContent">
+                <div class="log-entry info">
+                    <div class="log-time" id="initTime"></div>
+                    <div class="log-message">System initialized. Ready to process updates.</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Account Selection Modal -->
@@ -642,16 +762,90 @@
         </div>
     </div>
 
+    <!-- Update Results Modal -->
+    <div id="resultsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Update Results</h3>
+                <button class="close-btn" onclick="closeModal('resultsModal')">&times;</button>
+            </div>
+            <div id="resultsContent" style="padding: 10px;"></div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = window.location.origin;
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Set initial log time
+            document.getElementById('initTime').textContent = formatLocalTime(new Date());
             refreshStatus();
         });
 
+        // Format time in local timezone
+        function formatLocalTime(date) {
+            return new Intl.DateTimeFormat(navigator.language, {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }).format(date);
+        }
+
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const logContent = document.getElementById('logContent');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const time = document.createElement('div');
+            time.className = 'log-time';
+            time.textContent = formatLocalTime(new Date());
+            
+            const msg = document.createElement('div');
+            msg.className = 'log-message';
+            msg.textContent = message;
+            
+            entry.appendChild(time);
+            entry.appendChild(msg);
+            logContent.insertBefore(entry, logContent.firstChild);
+            
+            // Keep only last 50 entries
+            while (logContent.children.length > 50) {
+                logContent.removeChild(logContent.lastChild);
+            }
+            
+            // Auto-scroll to top
+            logContent.scrollTop = 0;
+        }
+
+        // Toggle log panel
+        function toggleLogPanel() {
+            const panel = document.getElementById('logPanel');
+            const toggle = document.querySelector('.log-toggle');
+            const title = document.getElementById('logTitle');
+            const content = document.getElementById('logContent');
+            
+            if (panel.classList.contains('collapsed')) {
+                panel.classList.remove('collapsed');
+                toggle.textContent = '◀';
+                title.style.display = 'block';
+                content.style.display = 'block';
+            } else {
+                panel.classList.add('collapsed');
+                toggle.textContent = '▶';
+                title.style.display = 'none';
+                content.style.display = 'none';
+            }
+        }
+
         // Fetch and display status
         async function refreshStatus() {
+            addLog('Fetching system status...', 'info');
             try {
                 const response = await fetch(`${API_BASE}/status`);
                 const data = await response.json();
@@ -659,9 +853,9 @@
                 if (data.success) {
                     const status = data.data;
                     
-                    // Update system status
+                    // Update system status with local time
                     document.getElementById('lastUpdate').textContent = 
-                        status.last_update ? new Date(status.last_update).toLocaleString() : 'Never';
+                        status.last_update ? formatLocalTime(new Date(status.last_update)) : 'Never';
                     
                     document.getElementById('updateStatus').innerHTML = 
                         status.last_update_success 
@@ -671,7 +865,7 @@
                     document.getElementById('zoomIPs').textContent = status.zoom_ips_count || '0';
                     
                     document.getElementById('nextUpdate').textContent = 
-                        status.next_scheduled_update ? new Date(status.next_scheduled_update).toLocaleString() : 'Not scheduled';
+                        status.next_scheduled_update ? formatLocalTime(new Date(status.next_scheduled_update)) : 'Not scheduled';
                     
                     // Update account info
                     document.getElementById('accountName').textContent = 
@@ -680,11 +874,14 @@
                     document.getElementById('profileCount').textContent = status.warp_profiles_count || '0';
                     document.getElementById('accountCount').textContent = status.accounts_available || '0';
 
+                    addLog('Status refreshed successfully', 'success');
                     showAlert('Status refreshed successfully', 'success');
                 } else {
+                    addLog('Failed to fetch status: ' + (data.error?.message || 'Unknown error'), 'error');
                     showAlert('Failed to fetch status: ' + (data.error?.message || 'Unknown error'), 'error');
                 }
             } catch (error) {
+                addLog('Error fetching status: ' + error.message, 'error');
                 showAlert('Error fetching status: ' + error.message, 'error');
             }
         }
@@ -695,6 +892,8 @@
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<span class="loading"></span> Updating...';
+
+            addLog(`Starting ${forceFetch ? 'force' : 'normal'} update...`, 'info');
 
             try {
                 const response = await fetch(`${API_BASE}/update`, {
@@ -707,10 +906,19 @@
 
                 if (data.success && data.data.success) {
                     const result = data.data;
+                    
+                    addLog(`Fetched ${result.ips_added} Zoom IP ranges`, 'success');
+                    addLog(`Updated ${result.profiles_updated} profile(s)`, 'success');
+                    addLog(`Processing time: ${(result.processing_time_ms / 1000).toFixed(2)}s`, 'info');
+                    
+                    // Update dashboard
                     document.getElementById('profilesUpdated').textContent = result.profiles_updated || '0';
                     document.getElementById('ipsAdded').textContent = result.ips_added || '0';
                     document.getElementById('processingTime').textContent = 
                         result.processing_time_ms ? `${(result.processing_time_ms / 1000).toFixed(2)}s` : '-';
+                    
+                    // Show detailed results modal
+                    showUpdateResults(result);
                     
                     showAlert(
                         `✓ Update completed! ${result.profiles_updated} profile(s) updated with ${result.ips_added} Zoom IPs.`,
@@ -720,9 +928,11 @@
                     setTimeout(refreshStatus, 1000);
                 } else {
                     const errors = data.data?.errors || [data.error?.message || 'Unknown error'];
+                    addLog('Update failed: ' + errors.join(', '), 'error');
                     showAlert('Update failed: ' + errors.join(', '), 'error');
                 }
             } catch (error) {
+                addLog('Error triggering update: ' + error.message, 'error');
                 showAlert('Error triggering update: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
@@ -730,8 +940,76 @@
             }
         }
 
+        // Show update results in modal
+        function showUpdateResults(result) {
+            const content = document.getElementById('resultsContent');
+            
+            let html = `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #667eea; margin-bottom: 10px;">Summary</h4>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <p><strong>Account:</strong> ${result.account_name}</p>
+                        <p><strong>Profiles Updated:</strong> ${result.profiles_updated}</p>
+                        <p><strong>Profiles Failed:</strong> ${result.profiles_failed}</p>
+                        <p><strong>Zoom IPs Added:</strong> ${result.ips_added}</p>
+                        <p><strong>Processing Time:</strong> ${(result.processing_time_ms / 1000).toFixed(2)}s</p>
+                    </div>
+                </div>
+            `;
+
+            if (result.updated_profiles && result.updated_profiles.length > 0) {
+                html += `
+                    <div>
+                        <h4 style="color: #667eea; margin-bottom: 10px;">Profile Details</h4>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                `;
+
+                result.updated_profiles.forEach(profile => {
+                    const statusColor = profile.success ? '#56ab2f' : '#eb3349';
+                    const statusIcon = profile.success ? '✓' : '✗';
+                    html += `
+                        <div style="background: #f8f9fa; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid ${statusColor};">
+                            <div style="font-weight: 600;">${statusIcon} ${profile.profile_name}</div>
+                            ${profile.error ? `<div style="color: #eb3349; font-size: 0.9rem; margin-top: 5px;">Error: ${profile.error}</div>` : ''}
+                            ${profile.success ? '<div style="color: #56ab2f; font-size: 0.9rem; margin-top: 5px;">Successfully updated with Zoom IPs</div>' : ''}
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            }
+
+            if (result.errors && result.errors.length > 0) {
+                html += `
+                    <div style="margin-top: 20px;">
+                        <h4 style="color: #eb3349; margin-bottom: 10px;">Errors</h4>
+                        <div style="background: #fff5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #eb3349;">
+                            ${result.errors.map(err => `<p style="margin: 5px 0;">• ${err}</p>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Add explanation for profiles not updated
+            html += `
+                <div style="margin-top: 20px; background: #d1ecf1; padding: 15px; border-radius: 8px; border-left: 4px solid #2193b0;">
+                    <h4 style="color: #0c5460; margin-bottom: 10px;">ℹ️ Important Note</h4>
+                    <p style="color: #0c5460; margin: 0;">
+                        This system updates the account-level split tunnel <strong>exclude list</strong>. 
+                        Only WARP profiles configured with <strong>exclude mode</strong> will use these Zoom IPs. 
+                        Profiles using <strong>include mode</strong> are not affected because they work differently 
+                        (include mode specifies which IPs go through the tunnel, while exclude mode specifies which IPs bypass it).
+                    </p>
+                </div>
+            `;
+
+            content.innerHTML = html;
+            document.getElementById('resultsModal').classList.add('active');
+        }
+
         // Show accounts modal
         async function showAccounts() {
+            addLog('Fetching available accounts...', 'info');
             document.getElementById('accountModal').classList.add('active');
             
             try {
