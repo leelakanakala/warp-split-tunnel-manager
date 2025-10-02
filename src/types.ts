@@ -5,6 +5,9 @@ export interface Env {
 	// KV namespace for caching Zoom IPs
 	ZOOM_IP_CACHE: KVNamespace;
 	
+	// Assets binding for serving static files
+	ASSETS: Fetcher;
+	
 	// Secrets
 	CLOUDFLARE_API_TOKEN: string;
 	SELECTED_ACCOUNT_ID?: string;

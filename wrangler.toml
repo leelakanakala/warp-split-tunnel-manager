@@ -2,6 +2,11 @@ name = "zoom-warp-manager"
 main = "src/index.ts"
 compatibility_date = "2025-10-02"
 
+# Serve static assets from public directory
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
 # Enable observability for monitoring
 [observability]
 enabled = true

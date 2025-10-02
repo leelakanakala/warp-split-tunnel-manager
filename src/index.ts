@@ -21,6 +21,9 @@ export default {
 			// Route handling
 			switch (true) {
 				case path === '/' && method === 'GET':
+					return handleWebUI(env, request);
+				
+				case path === '/api' && method === 'GET':
 					return handleRoot();
 
 				case path === '/status' && method === 'GET':
@@ -91,6 +94,26 @@ export default {
 		}
 	}
 };
+
+/**
+ * Handle web UI - serve the frontend
+ */
+async function handleWebUI(env: Env, request: Request): Promise<Response> {
+	// Serve the HTML frontend from assets
+	try {
+		return await env.ASSETS.fetch(request);
+	} catch (error) {
+		// Fallback if assets are unavailable
+		return new Response(`<!DOCTYPE html>
+<html><head><title>Zoom WARP Manager</title></head>
+<body style="font-family: sans-serif; padding: 40px; text-align: center;">
+<h1>Zoom WARP Manager</h1>
+<p>Web UI is loading... If this persists, access the API directly at <a href="/api">/api</a></p>
+</body></html>`, {
+			headers: { 'Content-Type': 'text/html' }
+		});
+	}
+}
 
 /**
  * Handle root endpoint - basic info
