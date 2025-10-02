@@ -78,8 +78,10 @@ export class CloudflareAPIService {
 			throw new Error(`Cloudflare API error: ${errors}`);
 		}
 
-		console.log(`Found ${data.result.length} WARP profiles`);
-		return data.result;
+		// Handle case where result might not be an array
+		const profiles = Array.isArray(data.result) ? data.result : [];
+		console.log(`Found ${profiles.length} WARP profiles`);
+		return profiles;
 	}
 
 	/**
