@@ -1,0 +1,30 @@
+name = "zoom-warp-manager"
+main = "src/index.ts"
+compatibility_date = "2025-10-02"
+
+# Enable observability for monitoring
+[observability]
+enabled = true
+
+# KV namespace for storing Zoom IP data (optional caching)
+[[kv_namespaces]]
+binding = "ZOOM_IP_CACHE"
+id = "a34122202992471484b277c1f2f87d0e"
+
+# Cron trigger for daily updates
+[triggers]
+crons = ["0 3 * * *"]  # Run daily at 3 AM UTC
+
+# Environment variables (use wrangler secret for sensitive values)
+[vars]
+ZOOM_IP_SOURCE_URL = "https://assets.zoom.us/docs/ipranges/ZoomMeetings.txt"
+UPDATE_INTERVAL_HOURS = "24"
+MAX_RETRIES = "3"
+
+# Secrets to be set via wrangler secret put command:
+# - CLOUDFLARE_API_TOKEN: Your Cloudflare API token with Zero Trust permissions
+# - SELECTED_ACCOUNT_ID: (Optional) Pre-selected Cloudflare account ID
+
+# Resource limits
+[limits]
+cpu_ms = 30000  # 30 seconds max execution time
