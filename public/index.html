@@ -840,7 +840,30 @@
                 hour12: true,
                 timeZoneName: 'short'
             };
-            return new Intl.DateTimeFormat(navigator.language, options).format(date);
+            
+            // Format the date
+            let formatted = new Intl.DateTimeFormat('en-US', options).format(date);
+            
+            // Try to get timezone abbreviation
+            try {
+                const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const tzParts = new Intl.DateTimeFormat('en-US', {
+                    timeZoneName: 'short',
+                    timeZone: timeZone
+                }).formatToParts(date);
+                
+                const tzName = tzParts.find(part => part.type === 'timeZoneName')?.value;
+                
+                // If we got a timezone name that's not GMT+X format, use it
+                if (tzName && !tzName.match(/GMT[+-]\d+/)) {
+                    // Replace any GMT+X with the proper abbreviation
+                    formatted = formatted.replace(/GMT[+-]\d+/, tzName);
+                }
+            } catch (e) {
+                // Fallback to default formatting
+            }
+            
+            return formatted;
         }
 
         // Add log entry
