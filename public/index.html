@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: 'Circular', 'Helvetica Neue', Helvetica, Arial, sans-serif;
             background: #121212;
             min-height: 100vh;
             padding: 20px;
@@ -40,8 +40,8 @@
         .sidebar .btn {
             width: 100%;
             justify-content: flex-start;
-            padding: 12px 16px;
-            font-size: 0.875rem;
+            padding: 14px 20px;
+            font-size: 1rem;
             font-weight: 700;
             border-radius: 4px;
             text-transform: none;
@@ -80,6 +80,7 @@
 
         .main-content {
             flex: 1;
+            margin-right: 8px;
         }
 
         .log-panel {
@@ -191,8 +192,8 @@
         .dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
 
         .card {
@@ -222,12 +223,11 @@
         .card-icon {
             font-size: 1.5rem;
         }
-
         .stat {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #282828;
         }
         
@@ -237,16 +237,19 @@
         
         .stat-label {
             color: #b3b3b3;
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             display: flex;
             align-items: center;
+            font-weight: 400;
         }
 
         .stat-value {
             color: #ffffff;
-            font-size: 1.1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            text-align: right;
         }
-
+        
         .status-badge {
             display: inline-block;
             padding: 4px 12px;
@@ -917,6 +920,9 @@
 
         // Format time in local timezone with AM/PM and timezone abbreviation
         function formatLocalTime(date) {
+            // Get timezone
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            
             const options = {
                 year: 'numeric',
                 month: 'short',
@@ -924,29 +930,44 @@
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true,
+                timeZone: timeZone,
                 timeZoneName: 'short'
             };
             
-            // Format the date
-            let formatted = new Intl.DateTimeFormat('en-US', options).format(date);
+            // Format with explicit timezone
+            const formatted = new Intl.DateTimeFormat('en-US', options).format(date);
             
-            // Try to get timezone abbreviation
-            try {
-                const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                const tzParts = new Intl.DateTimeFormat('en-US', {
-                    timeZoneName: 'short',
-                    timeZone: timeZone
-                }).formatToParts(date);
-                
-                const tzName = tzParts.find(part => part.type === 'timeZoneName')?.value;
-                
-                // If we got a timezone name that's not GMT+X format, use it
-                if (tzName && !tzName.match(/GMT[+-]\d+/)) {
-                    // Replace any GMT+X with the proper abbreviation
-                    formatted = formatted.replace(/GMT[+-]\d+/, tzName);
+            // If still showing GMT+X, try to get better abbreviation
+            if (formatted.includes('GMT')) {
+                try {
+                    // Try with long timezone name first
+                    const longOptions = { ...options, timeZoneName: 'long' };
+                    const longFormat = new Intl.DateTimeFormat('en-US', longOptions).format(date);
+                    
+                    // Extract timezone abbreviation from common patterns
+                    const tzMap = {
+                        'Singapore': 'SGT',
+                        'Hong Kong': 'HKT',
+                        'Tokyo': 'JST',
+                        'Sydney': 'AEDT',
+                        'Melbourne': 'AEDT',
+                        'Brisbane': 'AEST',
+                        'Perth': 'AWST',
+                        'Auckland': 'NZDT',
+                        'Los Angeles': 'PST',
+                        'New York': 'EST',
+                        'London': 'GMT',
+                        'Paris': 'CET'
+                    };
+                    
+                    for (const [city, abbr] of Object.entries(tzMap)) {
+                        if (timeZone.includes(city.replace(' ', '_'))) {
+                            return formatted.replace(/GMT[+-]\d+/, abbr);
+                        }
+                    }
+                } catch (e) {
+                    // Fallback
                 }
-            } catch (e) {
-                // Fallback to default formatting
             }
             
             return formatted;
