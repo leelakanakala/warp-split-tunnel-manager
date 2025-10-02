@@ -50,7 +50,9 @@ export interface CloudflareAccountsResponse {
  * Cloudflare Zero Trust Device Settings Profile (WARP Profile)
  */
 export interface WARPProfile {
-	profile_id: string;
+	profile_id?: string;
+	policy_id?: string;
+	id?: string;
 	name: string;
 	description?: string;
 	enabled: boolean;
@@ -132,12 +134,14 @@ export interface UpdateResult {
 	ips_added: number;
 	total_ips: number;
 	processing_time_ms: number;
+	timestamp: string;
 	errors: string[];
 	updated_profiles: {
 		profile_id: string;
 		profile_name: string;
 		success: boolean;
 		error?: string;
+		reason?: string;
 	}[];
 }
 

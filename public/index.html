@@ -467,15 +467,16 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 18px;
-            height: 18px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background: #e0e0e0;
             color: #666;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: bold;
-            margin-left: 8px;
+            margin-left: 6px;
             transition: all 0.2s;
+            flex-shrink: 0;
         }
 
         .tooltip:hover .tooltip-icon {
@@ -492,13 +493,14 @@
             transform: translateX(-50%);
             background: #333;
             color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
             white-space: nowrap;
             z-index: 1000;
             transition: opacity 0.3s;
             pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         .tooltip-text::after {
@@ -507,7 +509,7 @@
             top: 100%;
             left: 50%;
             transform: translateX(-50%);
-            border: 5px solid transparent;
+            border: 4px solid transparent;
             border-top-color: #333;
         }
 
@@ -666,10 +668,10 @@
                 </h2>
                 <div class="stat">
                     <span class="stat-label">
-                        Profiles Updated
+                        Exclude List Updated
                         <span class="tooltip">
                             <span class="tooltip-icon">?</span>
-                            <span class="tooltip-text">Number of WARP profiles successfully updated</span>
+                            <span class="tooltip-text">Updates the account-level split tunnel exclude list (applies to all profiles using exclude mode)</span>
                         </span>
                     </span>
                     <span class="stat-value" id="profilesUpdated">-</span>
@@ -693,6 +695,16 @@
                         </span>
                     </span>
                     <span class="stat-value" id="processingTime">-</span>
+                </div>
+                <div id="updatedProfilesList" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f0f0f0; display: none;">
+                    <div style="font-weight: 600; color: #667eea; margin-bottom: 10px; font-size: 0.9rem;">
+                        Profiles Using Exclude Mode:
+                        <span class="tooltip" style="display: inline-flex;">
+                            <span class="tooltip-icon" style="margin-left: 4px;">?</span>
+                            <span class="tooltip-text" style="white-space: normal; max-width: 200px;">These profiles automatically inherit the Zoom IPs from the account-level exclude list</span>
+                        </span>
+                    </div>
+                    <div id="profilesListContent" style="max-height: 150px; overflow-y: auto; font-size: 0.85rem;"></div>
                 </div>
             </div>
         </div>
@@ -864,8 +876,13 @@
                     
                     document.getElementById('zoomIPs').textContent = status.zoom_ips_count || '0';
                     
-                    document.getElementById('nextUpdate').textContent = 
-                        status.next_scheduled_update ? formatLocalTime(new Date(status.next_scheduled_update)) : 'Not scheduled';
+                    // Format next update with date and time
+                    if (status.next_scheduled_update) {
+                        const nextDate = new Date(status.next_scheduled_update);
+                        document.getElementById('nextUpdate').textContent = formatLocalTime(nextDate);
+                    } else {
+                        document.getElementById('nextUpdate').textContent = 'Not scheduled';
+                    }
                     
                     // Update account info
                     document.getElementById('accountName').textContent = 
@@ -873,6 +890,9 @@
                     
                     document.getElementById('profileCount').textContent = status.warp_profiles_count || '0';
                     document.getElementById('accountCount').textContent = status.accounts_available || '0';
+
+                    // Fetch and display last update profile list
+                    await updateProfilesList();
 
                     addLog('Status refreshed successfully', 'success');
                     showAlert('Status refreshed successfully', 'success');
@@ -883,6 +903,48 @@
             } catch (error) {
                 addLog('Error fetching status: ' + error.message, 'error');
                 showAlert('Error fetching status: ' + error.message, 'error');
+            }
+        }
+
+        // Update profiles list from last update
+        async function updateProfilesList() {
+            try {
+                const response = await fetch(`${API_BASE}/history?limit=1`);
+                const data = await response.json();
+
+                if (data.success && data.data.history && data.data.history.length > 0) {
+                    const lastUpdate = data.data.history[0];
+                    const profilesList = document.getElementById('updatedProfilesList');
+                    const profilesContent = document.getElementById('profilesListContent');
+
+                    if (lastUpdate.updated_profiles && lastUpdate.updated_profiles.length > 0) {
+                        // Filter to show only successfully updated profiles
+                        const updatedProfiles = lastUpdate.updated_profiles.filter(p => p.success);
+                        
+                        if (updatedProfiles.length > 0) {
+                            const html = updatedProfiles.map(profile => {
+                                return `
+                                    <div style="padding: 6px 8px; margin-bottom: 4px; background: #f0fff4; border-left: 3px solid #56ab2f; border-radius: 4px;">
+                                        <div style="font-weight: 500; color: #333;">✓ ${profile.profile_name}</div>
+                                        ${profile.reason ? `<div style="color: #666; font-size: 0.8rem; margin-top: 2px; font-style: italic;">${profile.reason}</div>` : ''}
+                                    </div>
+                                `;
+                            }).join('');
+                            
+                            profilesContent.innerHTML = html;
+                            profilesList.style.display = 'block';
+                        } else {
+                            profilesList.style.display = 'none';
+                        }
+                    } else {
+                        profilesList.style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('updatedProfilesList').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error fetching profiles list:', error);
+                document.getElementById('updatedProfilesList').style.display = 'none';
             }
         }
 
@@ -925,7 +987,10 @@
                         'success'
                     );
                     
-                    setTimeout(refreshStatus, 1000);
+                    // Refresh status and profiles list
+                    setTimeout(async () => {
+                        await refreshStatus();
+                    }, 1000);
                 } else {
                     const errors = data.data?.errors || [data.error?.message || 'Unknown error'];
                     addLog('Update failed: ' + errors.join(', '), 'error');
@@ -949,29 +1014,38 @@
                     <h4 style="color: #667eea; margin-bottom: 10px;">Summary</h4>
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
                         <p><strong>Account:</strong> ${result.account_name}</p>
-                        <p><strong>Profiles Updated:</strong> ${result.profiles_updated}</p>
-                        <p><strong>Profiles Failed:</strong> ${result.profiles_failed}</p>
+                        <p><strong>Update Type:</strong> Account-level Split Tunnel Exclude List</p>
+                        <p><strong>Status:</strong> ${result.profiles_updated > 0 ? '✓ Successfully Updated' : '✗ Not Updated'}</p>
                         <p><strong>Zoom IPs Added:</strong> ${result.ips_added}</p>
                         <p><strong>Processing Time:</strong> ${(result.processing_time_ms / 1000).toFixed(2)}s</p>
                     </div>
+                </div>
+                <div style="margin-bottom: 20px; background: #e7f3ff; padding: 15px; border-radius: 8px; border-left: 4px solid #2193b0;">
+                    <h4 style="color: #0c5460; margin-bottom: 10px;">ℹ️ How It Works</h4>
+                    <p style="color: #0c5460; margin: 0; font-size: 0.9rem;">
+                        This system updates the <strong>account-level split tunnel exclude list</strong>. 
+                        This list is automatically applied to all WARP profiles that use <strong>exclude mode</strong>. 
+                        Individual profiles are not updated directly - instead, they inherit the exclude list from the account settings.
+                    </p>
                 </div>
             `;
 
             if (result.updated_profiles && result.updated_profiles.length > 0) {
                 html += `
                     <div>
-                        <h4 style="color: #667eea; margin-bottom: 10px;">Profile Details</h4>
+                        <h4 style="color: #667eea; margin-bottom: 10px;">Profiles Affected (${result.updated_profiles.length} total)</h4>
                         <div style="max-height: 300px; overflow-y: auto;">
                 `;
 
                 result.updated_profiles.forEach(profile => {
                     const statusColor = profile.success ? '#56ab2f' : '#eb3349';
                     const statusIcon = profile.success ? '✓' : '✗';
+                    const statusBg = profile.success ? '#f0fff4' : '#fff5f5';
                     html += `
-                        <div style="background: #f8f9fa; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid ${statusColor};">
+                        <div style="background: ${statusBg}; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid ${statusColor};">
                             <div style="font-weight: 600;">${statusIcon} ${profile.profile_name}</div>
+                            ${profile.reason ? `<div style="color: #666; font-size: 0.85rem; margin-top: 5px; font-style: italic;">${profile.reason}</div>` : ''}
                             ${profile.error ? `<div style="color: #eb3349; font-size: 0.9rem; margin-top: 5px;">Error: ${profile.error}</div>` : ''}
-                            ${profile.success ? '<div style="color: #56ab2f; font-size: 0.9rem; margin-top: 5px;">Successfully updated with Zoom IPs</div>' : ''}
                         </div>
                     `;
                 });
@@ -1079,7 +1153,7 @@
                     const listHtml = history.map(item => {
                         const statusClass = item.success ? 'success' : 'error';
                         const statusIcon = item.success ? '✓' : '✗';
-                        const time = new Date(item.processing_time_ms).toLocaleString();
+                        const time = item.timestamp ? formatLocalTime(new Date(item.timestamp)) : 'Unknown';
                         
                         return `
                             <li class="history-item ${statusClass}">

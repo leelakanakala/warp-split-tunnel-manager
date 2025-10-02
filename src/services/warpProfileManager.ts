@@ -126,14 +126,16 @@ export class WARPProfileManager {
 				ips_added: zoomIPData.total_count,
 				total_ips: zoomIPData.total_count,
 				processing_time_ms: Date.now() - startTime,
+				timestamp: new Date().toISOString(),
 				errors: updateResults.results
 					.filter(r => !r.success)
 					.map(r => `${r.profileName}: ${r.error}`),
-				updated_profiles: updateResults.results.map(r => ({
+				updated_profiles: updateResults.results.map((r: any) => ({
 					profile_id: r.profileId,
 					profile_name: r.profileName,
 					success: r.success,
-					error: r.error
+					error: r.error,
+					reason: r.reason
 				})),
 			};
 
@@ -156,6 +158,7 @@ export class WARPProfileManager {
 				ips_added: 0,
 				total_ips: 0,
 				processing_time_ms: Date.now() - startTime,
+				timestamp: new Date().toISOString(),
 				errors: [errorMessage],
 				updated_profiles: [],
 			};
@@ -202,7 +205,7 @@ export class WARPProfileManager {
 		}
 
 		return {
-			last_update: lastUpdate ? new Date(lastUpdate.processing_time_ms).toISOString() : null,
+			last_update: lastUpdate ? lastUpdate.timestamp : null,
 			last_update_success: lastUpdate ? lastUpdate.success : false,
 			zoom_ips_count: zoomIPData ? zoomIPData.total_count : 0,
 			zoom_ips_last_fetched: zoomIPData ? zoomIPData.last_fetched : null,

@@ -13,7 +13,7 @@ export default {
 		const path = url.pathname;
 		const method = request.method;
 
-		console.log(`${method} ${path}`);
+		console.log(`[REQUEST] ${method} ${path}`);
 
 		try {
 			const manager = new WARPProfileManager(env);

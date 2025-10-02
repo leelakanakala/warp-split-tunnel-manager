@@ -197,8 +197,106 @@ export class CloudflareAPIService {
 	}
 
 	/**
-	 * Update account-level split tunnel exclude list with Zoom IPs
-	 * This updates the exclude list that applies to all profiles using exclude mode
+	 * Fetch individual profile details including split tunnel configuration
+	 */
+	async fetchProfileDetails(accountId: string, policyId: string): Promise<any> {
+		const url = `${this.baseURL}/accounts/${accountId}/devices/policy/${policyId}`;
+		console.log(`[API] GET ${url}`);
+		console.log(`[API] Fetching profile details for policy ${policyId}...`);
+		
+		const response = await fetch(url, {
+			method: 'GET',
+			headers: {
+				'Authorization': `Bearer ${this.apiToken}`,
+				'Content-Type': 'application/json',
+			},
+		});
+
+		console.log(`[API] Response: ${response.status} ${response.statusText}`);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error(`[API] Error: ${errorText}`);
+			throw new Error(`Failed to fetch profile details: ${response.status} ${errorText}`);
+		}
+
+		const data = await response.json() as any;
+
+		if (!data.success) {
+			const errors = data.errors?.map((e: CloudflareError) => e.message).join(', ') || 'Unknown error';
+			console.error(`[API] Cloudflare API error: ${errors}`);
+			throw new Error(`Cloudflare API error: ${errors}`);
+		}
+
+		console.log(`[API] Successfully fetched profile details`);
+		return data.result;
+	}
+
+	/**
+	 * Update individual profile's exclude list with Zoom IPs
+	 */
+	async updateProfileExcludeList(
+		accountId: string,
+		policyId: string,
+		profileName: string,
+		zoomIPs: string[]
+	): Promise<boolean> {
+		const url = `${this.baseURL}/accounts/${accountId}/devices/policy/${policyId}/exclude`;
+		console.log(`[API] PUT ${url}`);
+		console.log(`[API] Updating profile "${profileName}" (${policyId}) exclude list with ${zoomIPs.length} Zoom IPs...`);
+		
+		// Get existing exclude list
+		const profileDetails = await this.fetchProfileDetails(accountId, policyId);
+		const existingExclude = profileDetails.exclude || [];
+		
+		// Filter out old Zoom entries
+		const nonZoomEntries = existingExclude.filter(
+			(entry: any) => !entry.description?.toLowerCase().includes('zoom')
+		);
+
+		console.log(`[API] Found ${existingExclude.length} existing entries, ${nonZoomEntries.length} non-Zoom entries`);
+
+		// Create new entries with Zoom IPs
+		const zoomEntries = zoomIPs.map(ip => ({
+			address: ip,
+			description: 'Zoom IP Range (Auto-updated)',
+		}));
+
+		// Merge entries
+		const mergedEntries = [...nonZoomEntries, ...zoomEntries];
+		console.log(`[API] Merging ${nonZoomEntries.length} existing + ${zoomEntries.length} Zoom = ${mergedEntries.length} total entries`);
+
+		const response = await fetch(url, {
+			method: 'PUT',
+			headers: {
+				'Authorization': `Bearer ${this.apiToken}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(mergedEntries),
+		});
+
+		console.log(`[API] Response: ${response.status} ${response.statusText}`);
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error(`[API] Error: ${errorText}`);
+			throw new Error(`Failed to update profile exclude list: ${response.status} ${errorText}`);
+		}
+
+		const data = await response.json() as any;
+
+		if (!data.success) {
+			const errors = data.errors?.map((e: CloudflareError) => e.message).join(', ') || 'Unknown error';
+			console.error(`[API] Cloudflare API error: ${errors}`);
+			throw new Error(`Cloudflare API error: ${errors}`);
+		}
+
+		console.log(`[API] Successfully updated profile "${profileName}" exclude list`);
+		return true;
+	}
+
+	/**
+	 * Update all WARP profiles with Zoom IPs (only profiles with exclude mode)
 	 */
 	async updateAccountWithZoomIPs(
 		accountId: string,
@@ -207,55 +305,104 @@ export class CloudflareAPIService {
 		success: boolean;
 		updated: number;
 		failed: number;
-		results: Array<{ profileId: string; profileName: string; success: boolean; error?: string }>;
+		results: Array<{ profileId: string; profileName: string; success: boolean; error?: string; reason?: string }>;
 	}> {
+		const results: Array<{ profileId: string; profileName: string; success: boolean; error?: string; reason?: string }> = [];
+		let updated = 0;
+		let failed = 0;
+
 		try {
-			// Merge with existing entries to preserve non-Zoom configurations
-			const mergedEntries = await this.mergeSplitTunnelExcludeEntries(
-				accountId,
-				zoomIPs
-			);
-
-			// Update the account-level split tunnel exclude list
-			await this.updateSplitTunnelExclude(accountId, mergedEntries);
-
-			// Get profiles to report which ones will be affected
+			// Get all profiles
+			console.log(`[FLOW] Step 1: Fetching all WARP profiles for account ${accountId}...`);
 			const profiles = await this.fetchWARPProfiles(accountId);
-			const excludeProfiles = profiles.filter(p => p.tunnel?.mode === 'exclude');
-			const includeProfiles = profiles.filter(p => p.tunnel?.mode === 'include');
+			console.log(`[FLOW] Found ${profiles.length} total profiles`);
 
-			console.log(`Updated exclude list. ${excludeProfiles.length} profiles using exclude mode will be affected.`);
-			if (includeProfiles.length > 0) {
-				console.log(`Note: ${includeProfiles.length} profiles using include mode will NOT be affected.`);
+			// Process each profile
+			for (const profile of profiles) {
+				const policyId = profile.policy_id || profile.id;
+				const profileName = profile.name;
+
+				if (!policyId) {
+					console.log(`[FLOW] Skipping profile "${profileName}" - no policy ID found`);
+					results.push({
+						profileId: '',
+						profileName,
+						success: false,
+						reason: 'No policy ID found',
+					});
+					failed++;
+					continue;
+				}
+
+				try {
+					console.log(`[FLOW] Step 2: Fetching details for profile "${profileName}" (${policyId})...`);
+					const profileDetails = await this.fetchProfileDetails(accountId, policyId);
+
+					// Check if profile has include or exclude
+					const hasInclude = profileDetails.include && Array.isArray(profileDetails.include) && profileDetails.include.length > 0;
+					const hasExclude = profileDetails.exclude !== undefined;
+
+					console.log(`[FLOW] Profile "${profileName}" - hasInclude: ${hasInclude}, hasExclude: ${hasExclude}`);
+
+					if (hasInclude) {
+						console.log(`[FLOW] Skipping profile "${profileName}" - uses include mode`);
+						results.push({
+							profileId: policyId,
+							profileName,
+							success: false,
+							reason: 'Profile uses include mode - Cannot add Zoom IPs (include mode specifies which IPs go through tunnel, not which bypass it)',
+						});
+						failed++;
+					} else if (hasExclude || (!hasInclude && !hasExclude)) {
+						// Update profiles with exclude mode or no mode set
+						console.log(`[FLOW] Step 3: Updating profile "${profileName}" with Zoom IPs...`);
+						await this.updateProfileExcludeList(accountId, policyId, profileName, zoomIPs);
+						
+						results.push({
+							profileId: policyId,
+							profileName,
+							success: true,
+							reason: 'Profile uses exclude mode - Zoom IPs added to split tunnel exclude list',
+						});
+						updated++;
+						console.log(`[FLOW] ✓ Successfully updated profile "${profileName}"`);
+					}
+
+					// Add delay to avoid rate limiting
+					await this.delay(500);
+
+				} catch (error) {
+					const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+					console.error(`[FLOW] ✗ Failed to update profile "${profileName}":`, errorMessage);
+					
+					results.push({
+						profileId: policyId,
+						profileName,
+						success: false,
+						error: errorMessage,
+					});
+					failed++;
+				}
 			}
 
-			const results = excludeProfiles.map(profile => ({
-				profileId: profile.profile_id || '',
-				profileName: profile.name,
-				success: true,
-			}));
+			console.log(`[FLOW] Update complete: ${updated} updated, ${failed} failed`);
 
 			return {
-				success: true,
-				updated: 1, // One exclude list updated
-				failed: 0,
+				success: failed === 0,
+				updated,
+				failed,
 				results,
 			};
 
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-			console.error(`Failed to update split tunnel exclude list:`, errorMessage);
+			console.error(`[FLOW] Fatal error during update:`, errorMessage);
 			
 			return {
 				success: false,
-				updated: 0,
-				failed: 1,
-				results: [{
-					profileId: '',
-					profileName: 'Account-level exclude list',
-					success: false,
-					error: errorMessage,
-				}],
+				updated,
+				failed: failed + 1,
+				results,
 			};
 		}
 	}
