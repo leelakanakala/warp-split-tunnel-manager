@@ -1,6 +1,6 @@
-# Zoom WARP Manager
+# WARP Split Tunnel Manager
 
-A Cloudflare Workers-based system that automatically fetches Zoom IP ranges and updates all WARP profiles in your Cloudflare Zero Trust account with split tunnel configurations.
+A dynamic Cloudflare Workers-based system that automatically fetches IP ranges and domains from external sources (e.g., Zoom) and updates WARP profile split tunnel configurations in your Cloudflare Zero Trust account. This ensures that traffic to these IPs and domains from WARP clients bypasses the Cloudflare Edge and uses the local internet connection instead.
 
 ## Features
 

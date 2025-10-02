@@ -1,4 +1,4 @@
-name = "zoom-warp-manager"
+name = "warp-split-tunnel-manager"
 main = "src/index.ts"
 compatibility_date = "2025-10-02"
 

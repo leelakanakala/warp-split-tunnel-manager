@@ -1,13 +1,12 @@
 {
-	"name": "zoom-warp-manager",
+	"name": "warp-split-tunnel-manager",
 	"version": "1.0.0",
-	"description": "Cloudflare Workers-based system to automatically update Zero Trust WARP profiles with Zoom IP ranges",
+	"description": "WARP Split Tunnel Manager - Dynamically manage Zero Trust WARP profiles with external IP ranges",
 	"main": "src/index.ts",
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
-		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types",
 		"build": "wrangler deploy --dry-run"
