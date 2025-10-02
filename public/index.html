@@ -923,10 +923,12 @@
                         
                         if (updatedProfiles.length > 0) {
                             const html = updatedProfiles.map(profile => {
+                                const profileName = profile.profile_name || 'Unknown Profile';
+                                const reason = profile.reason || 'Updated successfully';
                                 return `
                                     <div style="padding: 6px 8px; margin-bottom: 4px; background: #f0fff4; border-left: 3px solid #56ab2f; border-radius: 4px;">
-                                        <div style="font-weight: 500; color: #333;">✓ ${profile.profile_name}</div>
-                                        ${profile.reason ? `<div style="color: #666; font-size: 0.8rem; margin-top: 2px; font-style: italic;">${profile.reason}</div>` : ''}
+                                        <div style="font-weight: 500; color: #333;">✓ ${profileName}</div>
+                                        <div style="color: #666; font-size: 0.8rem; margin-top: 2px; font-style: italic;">${reason}</div>
                                     </div>
                                 `;
                             }).join('');
@@ -1054,19 +1056,24 @@
                 <div style="margin-bottom: 20px;">
                     <h4 style="color: #667eea; margin-bottom: 10px;">Summary</h4>
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                        <p><strong>Account:</strong> ${result.account_name}</p>
-                        <p><strong>Update Type:</strong> Account-level Split Tunnel Exclude List</p>
+                        <p><strong>Account:</strong> ${result.account_name || 'Unknown'}</p>
+                        <p><strong>Profiles Updated:</strong> ${result.profiles_updated || 0}</p>
+                        <p><strong>Profiles Skipped:</strong> ${result.profiles_failed || 0}</p>
                         <p><strong>Status:</strong> ${result.profiles_updated > 0 ? '✓ Successfully Updated' : '✗ Not Updated'}</p>
-                        <p><strong>Zoom IPs Added:</strong> ${result.ips_added}</p>
+                        <p><strong>Zoom IPs Added:</strong> ${result.ips_added || 0}</p>
                         <p><strong>Processing Time:</strong> ${(result.processing_time_ms / 1000).toFixed(2)}s</p>
                     </div>
                 </div>
                 <div style="margin-bottom: 20px; background: #e7f3ff; padding: 15px; border-radius: 8px; border-left: 4px solid #2193b0;">
                     <h4 style="color: #0c5460; margin-bottom: 10px;">💡 How It Works</h4>
-                    <p style="color: #0c5460; margin: 0; font-size: 0.9rem;">
-                        This system updates the <strong>account-level split tunnel exclude list</strong>. 
-                        This list is automatically applied to all WARP profiles that use <strong>exclude mode</strong>. 
-                        Individual profiles are not updated directly - instead, they inherit the exclude list from the account settings.
+                    <p style="color: #0c5460; margin: 5px 0; font-size: 0.9rem;">
+                        This system updates <strong>individual WARP profiles</strong> by adding Zoom IP ranges to each profile's split tunnel exclude list.
+                    </p>
+                    <p style="color: #0c5460; margin: 5px 0; font-size: 0.9rem;">
+                        <strong>✓ Profiles with exclude mode:</strong> Updated successfully - Zoom IPs are added to the exclude list, allowing direct connection to Zoom servers (bypassing the tunnel).
+                    </p>
+                    <p style="color: #0c5460; margin: 5px 0; font-size: 0.9rem;">
+                        <strong>✗ Profiles with include mode:</strong> Cannot be updated - Include mode specifies which IPs go <em>through</em> the tunnel, not which bypass it. These profiles are skipped.
                     </p>
                 </div>
             `;
@@ -1082,11 +1089,15 @@
                     const statusColor = profile.success ? '#56ab2f' : '#eb3349';
                     const statusIcon = profile.success ? '✓' : '✗';
                     const statusBg = profile.success ? '#f0fff4' : '#fff5f5';
+                    const profileName = profile.profile_name || 'Unknown Profile';
+                    const reason = profile.reason || (profile.success ? 'Updated successfully' : 'Update skipped');
+                    const error = profile.error || '';
+                    
                     html += `
                         <div style="background: ${statusBg}; padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid ${statusColor};">
-                            <div style="font-weight: 600;">${statusIcon} ${profile.profile_name}</div>
-                            ${profile.reason ? `<div style="color: #666; font-size: 0.85rem; margin-top: 5px; font-style: italic;">${profile.reason}</div>` : ''}
-                            ${profile.error ? `<div style="color: #eb3349; font-size: 0.9rem; margin-top: 5px;">Error: ${profile.error}</div>` : ''}
+                            <div style="font-weight: 600;">${statusIcon} ${profileName}</div>
+                            <div style="color: #666; font-size: 0.85rem; margin-top: 5px; font-style: italic;">${reason}</div>
+                            ${error ? `<div style="color: #eb3349; font-size: 0.9rem; margin-top: 5px;">Error: ${error}</div>` : ''}
                         </div>
                     `;
                 });
@@ -1099,24 +1110,11 @@
                     <div style="margin-top: 20px;">
                         <h4 style="color: #eb3349; margin-bottom: 10px;">⚠️ Errors</h4>
                         <div style="background: #fff5f5; padding: 15px; border-radius: 8px; border-left: 4px solid #eb3349;">
-                            ${result.errors.map(err => `<p style="margin: 5px 0;">• ${err}</p>`).join('')}
+                            ${result.errors.map(err => `<p style="margin: 5px 0;">• ${err || 'Unknown error'}</p>`).join('')}
                         </div>
                     </div>
                 `;
             }
-
-            // Add explanation for profiles not updated
-            html += `
-                <div style="margin-top: 20px; background: #d1ecf1; padding: 15px; border-radius: 8px; border-left: 4px solid #2193b0;">
-                    <h4 style="color: #0c5460; margin-bottom: 10px;">ℹ️ Important Note</h4>
-                    <p style="color: #0c5460; margin: 0;">
-                        This system updates the account-level split tunnel <strong>exclude list</strong>. 
-                        Only WARP profiles configured with <strong>exclude mode</strong> will use these Zoom IPs. 
-                        Profiles using <strong>include mode</strong> are not affected because they work differently 
-                        (include mode specifies which IPs go through the tunnel, while exclude mode specifies which IPs bypass it).
-                    </p>
-                </div>
-            `;
 
             content.innerHTML = html;
             document.getElementById('resultsModal').classList.add('active');
