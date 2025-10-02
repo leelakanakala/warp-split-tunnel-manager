@@ -20,10 +20,62 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             display: flex;
-            gap: 20px;
+            gap: 0;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #000000;
+            padding: 24px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-radius: 8px;
+            margin-right: 8px;
+        }
+
+        .sidebar .btn {
+            width: 100%;
+            justify-content: flex-start;
+            padding: 12px 16px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            border-radius: 4px;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .sidebar .btn:hover {
+            transform: none;
+            background: #1a1a1a;
+        }
+
+        .sidebar .btn-success {
+            background: #1DB954;
+            color: #000000;
+        }
+
+        .sidebar .btn-success:hover {
+            background: #1ed760;
+            transform: scale(1.02);
+        }
+
+        .sidebar .btn-warning,
+        .sidebar .btn-info,
+        .sidebar .btn-primary {
+            background: transparent;
+            color: #b3b3b3;
+            border: none;
+        }
+
+        .sidebar .btn-warning:hover,
+        .sidebar .btn-info:hover,
+        .sidebar .btn-primary:hover {
+            background: #1a1a1a;
+            color: #ffffff;
         }
 
         .main-content {
@@ -574,10 +626,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .actions {
-                grid-template-columns: 1fr;
-            }
-
             .tooltip-text {
                 max-width: 200px;
                 font-size: 0.75rem;
@@ -585,6 +633,20 @@
 
             .container {
                 flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                margin-right: 0;
+                margin-bottom: 20px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: 16px;
+            }
+
+            .sidebar .btn {
+                flex: 1;
+                min-width: 150px;
             }
 
             .log-panel {
@@ -605,6 +667,25 @@
     <div id="alert" class="alert" style="max-width: 1400px; margin: 0 auto 20px;"></div>
 
     <div class="container">
+        <!-- Left Sidebar with Actions -->
+        <div class="sidebar">
+            <button class="btn btn-success" onclick="triggerUpdate(false)">
+                <span>🔄</span> Update Now
+            </button>
+            <button class="btn btn-warning" onclick="triggerUpdate(true)">
+                <span>⚡</span> Force Update
+            </button>
+            <button class="btn btn-info" onclick="showAccounts()">
+                <span>🏢</span> Switch Account
+            </button>
+            <button class="btn btn-primary" onclick="showHistory()">
+                <span>📜</span> View History
+            </button>
+            <button class="btn btn-info" onclick="refreshStatus()">
+                <span>🔃</span> Refresh Status
+            </button>
+        </div>
+
         <div class="main-content">
 
         <div class="dashboard">
@@ -755,29 +836,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="actions">
-            <button class="btn btn-success tooltip" onclick="triggerUpdate(false)" style="position: relative;">
-                <span>🔄</span> Update Now
-                <span class="tooltip-text" style="bottom: 110%;">Fetch latest Zoom IPs and update WARP profiles (uses cache if available)</span>
-            </button>
-            <button class="btn btn-warning tooltip" onclick="triggerUpdate(true)" style="position: relative;">
-                <span>⚡</span> Force Update
-                <span class="tooltip-text" style="bottom: 110%;">Force fetch fresh Zoom IPs from source, bypassing cache</span>
-            </button>
-            <button class="btn btn-info tooltip" onclick="showAccounts()" style="position: relative;">
-                <span>🏢</span> Switch Account
-                <span class="tooltip-text" style="bottom: 110%;">Select a different Cloudflare account to manage</span>
-            </button>
-            <button class="btn btn-primary tooltip" onclick="showHistory()" style="position: relative;">
-                <span>📜</span> View History
-                <span class="tooltip-text" style="bottom: 110%;">View the last 20 update operations and their results</span>
-            </button>
-            <button class="btn btn-info tooltip" onclick="refreshStatus()" style="position: relative;">
-                <span>🔃</span> Refresh Status
-                <span class="tooltip-text" style="bottom: 110%;">Reload current system status and statistics</span>
-            </button>
         </div>
         </div>
 
