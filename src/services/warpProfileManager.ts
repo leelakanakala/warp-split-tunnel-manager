@@ -109,9 +109,9 @@ export class WARPProfileManager {
 				}
 			}
 
-			// Update all WARP profiles with Zoom IPs
-			console.log(`Updating WARP profiles for account ${targetAccountName}...`);
-			const updateResults = await this.cloudflareAPI.updateAllProfilesWithZoomIPs(
+			// Update account-level split tunnel exclude list with Zoom IPs
+			console.log(`Updating split tunnel exclude list for account ${targetAccountName}...`);
+			const updateResults = await this.cloudflareAPI.updateAccountWithZoomIPs(
 				targetAccountId,
 				zoomIPData.ips
 			);
