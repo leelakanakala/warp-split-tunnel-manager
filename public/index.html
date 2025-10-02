@@ -364,6 +364,73 @@
             flex: 1;
         }
 
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: help;
+        }
+
+        .tooltip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #666;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 8px;
+            transition: all 0.2s;
+        }
+
+        .tooltip:hover .tooltip-icon {
+            background: #667eea;
+            color: white;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            z-index: 1000;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #333;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .stat-label .tooltip-text,
+        .card h2 .tooltip-text {
+            white-space: normal;
+            max-width: 250px;
+            text-align: center;
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.8rem;
@@ -375,6 +442,11 @@
 
             .actions {
                 grid-template-columns: 1fr;
+            }
+
+            .tooltip-text {
+                max-width: 200px;
+                font-size: 0.75rem;
             }
         }
     </style>
@@ -390,73 +462,156 @@
 
         <div class="dashboard">
             <div class="card">
-                <h2><span class="card-icon">📊</span> System Status</h2>
+                <h2>
+                    <span class="card-icon">📊</span> System Status
+                    <span class="tooltip">
+                        <span class="tooltip-icon">?</span>
+                        <span class="tooltip-text">Overall system health and update status</span>
+                    </span>
+                </h2>
                 <div class="stat">
-                    <span class="stat-label">Last Update</span>
+                    <span class="stat-label">
+                        Last Update
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Timestamp of the most recent Zoom IP update</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="lastUpdate">Loading...</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Update Status</span>
+                    <span class="stat-label">
+                        Update Status
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Success or failure status of the last update</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="updateStatus">Loading...</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Zoom IPs</span>
+                    <span class="stat-label">
+                        Zoom IPs
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Total number of Zoom IP ranges currently cached</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="zoomIPs">Loading...</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Next Scheduled</span>
+                    <span class="stat-label">
+                        Next Scheduled
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Next automatic update time (daily at 3 AM UTC)</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="nextUpdate">Loading...</span>
                 </div>
             </div>
 
             <div class="card">
-                <h2><span class="card-icon">🏢</span> Account Info</h2>
+                <h2>
+                    <span class="card-icon">🏢</span> Account Info
+                    <span class="tooltip">
+                        <span class="tooltip-icon">?</span>
+                        <span class="tooltip-text">Cloudflare account and WARP profile information</span>
+                    </span>
+                </h2>
                 <div class="stat">
-                    <span class="stat-label">Selected Account</span>
+                    <span class="stat-label">
+                        Selected Account
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Currently active Cloudflare account for updates</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="accountName">Loading...</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">WARP Profiles</span>
+                    <span class="stat-label">
+                        WARP Profiles
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Number of WARP device profiles in this account</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="profileCount">Loading...</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Available Accounts</span>
+                    <span class="stat-label">
+                        Available Accounts
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Total Cloudflare accounts accessible with your API token</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="accountCount">Loading...</span>
                 </div>
             </div>
 
             <div class="card">
-                <h2><span class="card-icon">📈</span> Last Update Details</h2>
+                <h2>
+                    <span class="card-icon">📈</span> Last Update Details
+                    <span class="tooltip">
+                        <span class="tooltip-icon">?</span>
+                        <span class="tooltip-text">Detailed metrics from the most recent update</span>
+                    </span>
+                </h2>
                 <div class="stat">
-                    <span class="stat-label">Profiles Updated</span>
+                    <span class="stat-label">
+                        Profiles Updated
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Number of WARP profiles successfully updated</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="profilesUpdated">-</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">IPs Added</span>
+                    <span class="stat-label">
+                        IPs Added
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Total Zoom IP ranges added to split tunnel exclude list</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="ipsAdded">-</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Processing Time</span>
+                    <span class="stat-label">
+                        Processing Time
+                        <span class="tooltip">
+                            <span class="tooltip-icon">?</span>
+                            <span class="tooltip-text">Time taken to complete the update operation</span>
+                        </span>
+                    </span>
                     <span class="stat-value" id="processingTime">-</span>
                 </div>
             </div>
         </div>
 
         <div class="actions">
-            <button class="btn btn-success" onclick="triggerUpdate(false)">
+            <button class="btn btn-success tooltip" onclick="triggerUpdate(false)" style="position: relative;">
                 <span>🔄</span> Update Now
+                <span class="tooltip-text" style="bottom: 110%;">Fetch latest Zoom IPs and update WARP profiles (uses cache if available)</span>
             </button>
-            <button class="btn btn-warning" onclick="triggerUpdate(true)">
+            <button class="btn btn-warning tooltip" onclick="triggerUpdate(true)" style="position: relative;">
                 <span>⚡</span> Force Update
+                <span class="tooltip-text" style="bottom: 110%;">Force fetch fresh Zoom IPs from source, bypassing cache</span>
             </button>
-            <button class="btn btn-info" onclick="showAccounts()">
+            <button class="btn btn-info tooltip" onclick="showAccounts()" style="position: relative;">
                 <span>🏢</span> Switch Account
+                <span class="tooltip-text" style="bottom: 110%;">Select a different Cloudflare account to manage</span>
             </button>
-            <button class="btn btn-primary" onclick="showHistory()">
+            <button class="btn btn-primary tooltip" onclick="showHistory()" style="position: relative;">
                 <span>📜</span> View History
+                <span class="tooltip-text" style="bottom: 110%;">View the last 20 update operations and their results</span>
             </button>
-            <button class="btn btn-info" onclick="refreshStatus()">
+            <button class="btn btn-info tooltip" onclick="refreshStatus()" style="position: relative;">
                 <span>🔃</span> Refresh Status
+                <span class="tooltip-text" style="bottom: 110%;">Reload current system status and statistics</span>
             </button>
         </div>
     </div>
