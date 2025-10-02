@@ -1,4 +1,4 @@
-import { Env, UpdateResult, SystemStatus, CloudflareAccount } from '../types';
+import { Env, UpdateResult, SystemStatus, CloudflareAccount, ZoomIPData } from '../types';
 import { CloudflareAPIService } from './cloudflareAPI';
 import { ZoomIPFetcher } from './zoomIPFetcher';
 import { StorageService } from './storageService';
@@ -94,22 +94,55 @@ export class WARPProfileManager {
 				targetAccountName = account.name;
 			}
 
+			// Get previously stored IPs for comparison
+			const previousIPData = await this.storage.getZoomIPs();
+			
 			// Fetch Zoom IPs (from cache or fresh)
 			let zoomIPData;
+			let fetchedFresh = false;
+			
 			if (forceFetch) {
 				console.log('Force fetching Zoom IPs...');
 				zoomIPData = await this.zoomFetcher.fetchZoomIPs();
-				await this.storage.storeZoomIPs(zoomIPData);
+				fetchedFresh = true;
 			} else {
 				// Try to get from cache first
 				zoomIPData = await this.storage.getZoomIPs();
 				if (!zoomIPData) {
 					console.log('No cached Zoom IPs, fetching fresh...');
 					zoomIPData = await this.zoomFetcher.fetchZoomIPs();
-					await this.storage.storeZoomIPs(zoomIPData);
+					fetchedFresh = true;
 				} else {
 					console.log(`Using cached Zoom IPs (${zoomIPData.total_count} entries)`);
 				}
+			}
+
+			// Compare IPs to see if there's any change
+			const hasChanges = this.hasIPChanges(previousIPData, zoomIPData);
+			
+			if (!hasChanges && !forceFetch) {
+				console.log('No changes detected in Zoom IP list. Skipping profile updates.');
+				const result: UpdateResult = {
+					success: true,
+					timestamp: new Date().toISOString(),
+					account_id: targetAccountId,
+					account_name: targetAccountName,
+					profiles_updated: 0,
+					profiles_failed: 0,
+					ips_added: zoomIPData.total_count,
+					processing_time_ms: Date.now() - startTime,
+					message: 'No changes detected in Zoom IP list - profiles not updated',
+					updated_profiles: [],
+				};
+
+				await this.storage.storeLastUpdate(result);
+				console.log('Update completed (no changes)');
+				return result;
+			}
+
+			// Store the new IP data if fetched fresh
+			if (fetchedFresh) {
+				await this.storage.storeZoomIPs(zoomIPData);
 			}
 
 			// Update account-level split tunnel exclude list with Zoom IPs
@@ -127,12 +160,8 @@ export class WARPProfileManager {
 				profiles_updated: updateResults.updated,
 				profiles_failed: updateResults.failed,
 				ips_added: zoomIPData.total_count,
-				total_ips: zoomIPData.total_count,
 				processing_time_ms: Date.now() - startTime,
 				timestamp: new Date().toISOString(),
-				errors: updateResults.results
-					.filter(r => !r.success && r.error)
-					.map(r => `${r.profileName || 'Unknown'}: ${r.error || 'Unknown error'}`),
 				updated_profiles: updateResults.results.map((r: any) => ({
 					profile_id: r.profileId || 'default',
 					profile_name: r.profileName || 'Unknown Profile',
@@ -159,10 +188,9 @@ export class WARPProfileManager {
 				profiles_updated: 0,
 				profiles_failed: 0,
 				ips_added: 0,
-				total_ips: 0,
 				processing_time_ms: Date.now() - startTime,
 				timestamp: new Date().toISOString(),
-				errors: [errorMessage],
+				error: errorMessage,
 				updated_profiles: [],
 			};
 
@@ -218,6 +246,44 @@ export class WARPProfileManager {
 			warp_profiles_count: warpProfilesCount,
 			next_scheduled_update: nextUpdate.toISOString(),
 		};
+	}
+
+	/**
+	 * Compare two IP datasets to detect changes
+	 */
+	private hasIPChanges(previous: ZoomIPData | null, current: ZoomIPData): boolean {
+		if (!previous) {
+			console.log('No previous IP data - treating as changed');
+			return true;
+		}
+
+		// Compare counts first (quick check)
+		if (previous.total_count !== current.total_count) {
+			console.log(`IP count changed: ${previous.total_count} -> ${current.total_count}`);
+			return true;
+		}
+
+		// Compare IP arrays
+		const prevSet = new Set(previous.ips);
+		const currSet = new Set(current.ips);
+
+		// Check if any IPs were added or removed
+		for (const ip of current.ips) {
+			if (!prevSet.has(ip)) {
+				console.log(`New IP detected: ${ip}`);
+				return true;
+			}
+		}
+
+		for (const ip of previous.ips) {
+			if (!currSet.has(ip)) {
+				console.log(`IP removed: ${ip}`);
+				return true;
+			}
+		}
+
+		console.log('No changes detected in IP list');
+		return false;
 	}
 
 	/**

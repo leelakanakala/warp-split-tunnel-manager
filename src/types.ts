@@ -124,26 +124,31 @@ export interface ZoomIPData {
 }
 
 /**
+ * Profile Update Result
+ */
+export interface ProfileUpdateResult {
+	profile_id: string;
+	profile_name: string;
+	success: boolean;
+	reason?: string;
+	error?: string;
+}
+
+/**
  * Update Result
  */
 export interface UpdateResult {
 	success: boolean;
+	timestamp: string;
 	account_id: string;
 	account_name: string;
 	profiles_updated: number;
 	profiles_failed: number;
 	ips_added: number;
-	total_ips: number;
 	processing_time_ms: number;
-	timestamp: string;
-	errors: string[];
-	updated_profiles: {
-		profile_id: string;
-		profile_name: string;
-		success: boolean;
-		error?: string;
-		reason?: string;
-	}[];
+	error?: string;
+	message?: string;
+	updated_profiles?: ProfileUpdateResult[];
 }
 
 /**
