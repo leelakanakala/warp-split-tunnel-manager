@@ -198,11 +198,16 @@ export class CloudflareAPIService {
 
 	/**
 	 * Fetch individual profile details including split tunnel configuration
+	 * For default profile (no policy_id), use /devices/policy
+	 * For custom profiles, use /devices/policy/{policy_id}
 	 */
-	async fetchProfileDetails(accountId: string, policyId: string): Promise<any> {
-		const url = `${this.baseURL}/accounts/${accountId}/devices/policy/${policyId}`;
+	async fetchProfileDetails(accountId: string, policyId: string | null, isDefault: boolean = false): Promise<any> {
+		const url = isDefault || !policyId
+			? `${this.baseURL}/accounts/${accountId}/devices/policy`
+			: `${this.baseURL}/accounts/${accountId}/devices/policy/${policyId}`;
+		
 		console.log(`[API] GET ${url}`);
-		console.log(`[API] Fetching profile details for policy ${policyId}...`);
+		console.log(`[API] Fetching ${isDefault ? 'default' : 'custom'} profile details${policyId ? ` for policy ${policyId}` : ''}...`);
 		
 		const response = await fetch(url, {
 			method: 'GET',
@@ -234,19 +239,25 @@ export class CloudflareAPIService {
 
 	/**
 	 * Update individual profile's exclude list with Zoom IPs
+	 * For default profile (no policy_id), use /devices/policy/exclude
+	 * For custom profiles, use /devices/policy/{policy_id}/exclude
 	 */
 	async updateProfileExcludeList(
 		accountId: string,
-		policyId: string,
+		policyId: string | null,
 		profileName: string,
-		zoomIPs: string[]
+		zoomIPs: string[],
+		isDefault: boolean = false
 	): Promise<boolean> {
-		const url = `${this.baseURL}/accounts/${accountId}/devices/policy/${policyId}/exclude`;
+		const url = isDefault || !policyId
+			? `${this.baseURL}/accounts/${accountId}/devices/policy/exclude`
+			: `${this.baseURL}/accounts/${accountId}/devices/policy/${policyId}/exclude`;
+		
 		console.log(`[API] PUT ${url}`);
-		console.log(`[API] Updating profile "${profileName}" (${policyId}) exclude list with ${zoomIPs.length} Zoom IPs...`);
+		console.log(`[API] Updating ${isDefault ? 'default' : 'custom'} profile "${profileName}"${policyId ? ` (${policyId})` : ''} exclude list with ${zoomIPs.length} Zoom IPs...`);
 		
 		// Get existing exclude list
-		const profileDetails = await this.fetchProfileDetails(accountId, policyId);
+		const profileDetails = await this.fetchProfileDetails(accountId, policyId, isDefault);
 		const existingExclude = profileDetails.exclude || [];
 		
 		// Filter out old Zoom entries
@@ -321,9 +332,11 @@ export class CloudflareAPIService {
 			for (const profile of profiles) {
 				const policyId = profile.policy_id || profile.id;
 				const profileName = profile.name;
+				const isDefault = profile.is_default || false;
 
-				if (!policyId) {
-					console.log(`[FLOW] Skipping profile "${profileName}" - no policy ID found`);
+				// Default profile doesn't have a policy_id
+				if (!policyId && !isDefault) {
+					console.log(`[FLOW] Skipping profile "${profileName}" - no policy ID found and not default profile`);
 					results.push({
 						profileId: '',
 						profileName,
@@ -335,19 +348,24 @@ export class CloudflareAPIService {
 				}
 
 				try {
-					console.log(`[FLOW] Step 2: Fetching details for profile "${profileName}" (${policyId})...`);
-					const profileDetails = await this.fetchProfileDetails(accountId, policyId);
+					if (isDefault) {
+						console.log(`[FLOW] Step 2: Fetching details for DEFAULT profile "${profileName}"...`);
+					} else {
+						console.log(`[FLOW] Step 2: Fetching details for profile "${profileName}" (${policyId})...`);
+					}
+					
+					const profileDetails = await this.fetchProfileDetails(accountId, policyId || null, isDefault);
 
 					// Check if profile has include or exclude
 					const hasInclude = profileDetails.include && Array.isArray(profileDetails.include) && profileDetails.include.length > 0;
 					const hasExclude = profileDetails.exclude !== undefined;
 
-					console.log(`[FLOW] Profile "${profileName}" - hasInclude: ${hasInclude}, hasExclude: ${hasExclude}`);
+					console.log(`[FLOW] Profile "${profileName}" (${isDefault ? 'DEFAULT' : policyId}) - hasInclude: ${hasInclude}, hasExclude: ${hasExclude}`);
 
 					if (hasInclude) {
 						console.log(`[FLOW] Skipping profile "${profileName}" - uses include mode`);
 						results.push({
-							profileId: policyId,
+							profileId: policyId || 'default',
 							profileName,
 							success: false,
 							reason: 'Profile uses include mode - Cannot add Zoom IPs (include mode specifies which IPs go through tunnel, not which bypass it)',
@@ -355,12 +373,12 @@ export class CloudflareAPIService {
 						failed++;
 					} else if (hasExclude || (!hasInclude && !hasExclude)) {
 						// Update profiles with exclude mode or no mode set
-						console.log(`[FLOW] Step 3: Updating profile "${profileName}" with Zoom IPs...`);
-						await this.updateProfileExcludeList(accountId, policyId, profileName, zoomIPs);
+						console.log(`[FLOW] Step 3: Updating ${isDefault ? 'DEFAULT' : ''} profile "${profileName}" with Zoom IPs...`);
+						await this.updateProfileExcludeList(accountId, policyId || null, profileName, zoomIPs, isDefault);
 						
 						results.push({
-							profileId: policyId,
-							profileName,
+							profileId: policyId || 'default',
+							profileName: isDefault ? `${profileName} (Default)` : profileName,
 							success: true,
 							reason: 'Profile uses exclude mode - Zoom IPs added to split tunnel exclude list',
 						});
@@ -376,7 +394,7 @@ export class CloudflareAPIService {
 					console.error(`[FLOW] ✗ Failed to update profile "${profileName}":`, errorMessage);
 					
 					results.push({
-						profileId: policyId,
+						profileId: policyId || 'default',
 						profileName,
 						success: false,
 						error: errorMessage,
